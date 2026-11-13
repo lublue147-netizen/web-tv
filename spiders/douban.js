@@ -93,7 +93,7 @@
     searchContent: async function (key, quick) {
       try {
         const url = `https://movie.douban.com/j/subject_suggest?q=${encodeURIComponent(key)}`;
-        const fetcher = global.req || global.gmFetch;
+        const fetcher = global.safeFetch || global.req || global.gmFetch;
         const res = await fetcher(url, { headers: { 'Referer': 'https://movie.douban.com/' } });
         const data = res.json ? await res.json() : JSON.parse(res.content || '[]');
 
@@ -114,7 +114,7 @@
     _fetchDouban: async function (type, tag, page = 1) {
       const pageStart = (page - 1) * 30;
       const url = `https://movie.douban.com/j/search_subjects?type=${type}&tag=${encodeURIComponent(tag)}&page_limit=30&page_start=${pageStart}`;
-      const fetcher = global.req || global.gmFetch;
+      const fetcher = global.safeFetch || global.req || global.gmFetch;
       const res = await fetcher(url, {
         headers: {
           'Referer': 'https://movie.douban.com/',

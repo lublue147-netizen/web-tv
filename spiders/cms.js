@@ -22,7 +22,7 @@
 
     async homeContent(filter) {
       try {
-        const fetcher = global.req || global.gmFetch;
+        const fetcher = global.safeFetch || global.req || global.gmFetch;
         const res = await fetcher(`${this.apiUrl}?ac=detail`);
         const data = res.json ? await res.json() : JSON.parse(res.content || '{}');
 
@@ -43,7 +43,7 @@
     async categoryContent(tid, pg = 1, filter, extend = {}) {
       try {
         const page = parseInt(pg) || 1;
-        const fetcher = global.req || global.gmFetch;
+        const fetcher = global.safeFetch || global.req || global.gmFetch;
         const res = await fetcher(`${this.apiUrl}?ac=detail&t=${tid}&pg=${page}`);
         const data = res.json ? await res.json() : JSON.parse(res.content || '{}');
 
@@ -67,7 +67,7 @@
       const id = ids[0];
 
       try {
-        const fetcher = global.req || global.gmFetch;
+        const fetcher = global.safeFetch || global.req || global.gmFetch;
         const res = await fetcher(`${this.apiUrl}?ac=detail&ids=${id}`);
         const data = res.json ? await res.json() : JSON.parse(res.content || '{}');
         const list = data.list || [];
@@ -113,7 +113,7 @@
 
     async searchContent(key, quick) {
       try {
-        const fetcher = global.req || global.gmFetch;
+        const fetcher = global.safeFetch || global.req || global.gmFetch;
         const res = await fetcher(`${this.apiUrl}?ac=detail&wd=${encodeURIComponent(key)}`);
         const data = res.json ? await res.json() : JSON.parse(res.content || '{}');
 

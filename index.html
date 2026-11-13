@@ -664,8 +664,8 @@
     </div>
   </div>
 
-  <!-- 引入依赖脚本：内核注册表与各爬虫适配器 -->
-  <script src="./kernel/catvod-ios-kernel.user.js"></script>
+  <!-- 引入依赖脚本：客户端通信桥与各爬虫适配器 -->
+  <script src="./assets/client-bridge.js"></script>
   <script src="./spiders/duboku.js"></script>
   <script src="./spiders/douban.js"></script>
   <script src="./spiders/cms.js"></script>
@@ -690,20 +690,22 @@
     // 1. 内核检测与引导
     // ====================================================
     function initKernelCheck() {
-      const isLoaded = typeof window.isKernelLoaded !== 'undefined' && window.isKernelLoaded;
       const badge = document.getElementById('kernel-badge');
       const label = document.getElementById('kernel-label');
 
-      if (isLoaded) {
-        badge.className = 'badge-kernel ready';
-        label.textContent = 'iOS 特权内核已就绪 v' + (window.version || '3.0.0');
-      } else {
-        badge.className = 'badge-kernel warning';
-        label.textContent = '⚠️ 扩展内核未连接 (点击排查)';
-        setTimeout(initKernelCheck, 800);
+      function updateUI(ready) {
+        if (ready || window.isKernelLoaded) {
+          badge.className = 'badge-kernel ready';
+          label.textContent = 'iOS 特权内核已就绪 v' + (window.kernelVersion || '3.1.0');
+        } else {
+          badge.className = 'badge-kernel warning';
+          label.textContent = '⚠️ 扩展内核未连接 (点击排查)';
+        }
       }
+
+      window.onKernelStatusChange = updateUI;
+      updateUI(window.isKernelLoaded);
     }
-    window.addEventListener('catvod-kernel-ready', initKernelCheck);
 
     function showKernelModal() {
       if (window.isKernelLoaded) {
@@ -990,9 +992,10 @@
       document.getElementById('current-play-title').textContent = '⚡ 准备播放: ' + title;
 
       try {
-        if (url.includes('.m3u8') && window.processM3U8Locally) {
+        if (url.includes('.m3u8')) {
           document.getElementById('current-play-title').textContent = '🛡️ M3U8 清洗与广告剥离中...';
-          const cleanDataUri = await window.processM3U8Locally(url, headers);
+          const cleanDataUri = window.safeCleanM3U8 ? (await window.safeCleanM3U8(url, headers)) :
+                              (window.processM3U8Locally ? (await window.processM3U8Locally(url, headers)) : url);
           video.src = cleanDataUri;
         } else {
           video.src = url;
@@ -1031,8 +1034,7 @@
     // ====================================================
     async function loadIptvData(m3uPath = './data/iptv.m3u') {
       try {
-        const fetcher = window.gmFetch || window.fetch;
-        const res = await fetcher(m3uPath);
+        const res = await (window.safeFetch ? window.safeFetch(m3uPath) : fetch(m3uPath));
         const text = await res.text();
 
         const channels = [];
@@ -1174,7 +1176,9 @@
     // ====================================================
     function switchView(view) {
       document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-      event.target.classList.add('active');
+      if (window.event && window.event.target && window.event.target.classList) {
+        window.event.target.classList.add('active');
+      }
 
       document.getElementById('view-vod').style.display = view === 'vod' ? 'block' : 'none';
       document.getElementById('view-live').style.display = view === 'live' ? 'block' : 'none';
@@ -1194,6 +1198,7 @@
     window.addEventListener('DOMContentLoaded', () => {
       initKernelCheck();
       initSites();
+      loadIptvData(); // 后台预加载 5000+ 直播频道
     });
   </script>
 </body>

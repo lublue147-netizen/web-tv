@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         蜂蜜影视 iOS 纯前端全功能内核 (强化版)
 // @namespace    https://github.com/lublue147-netizen/web-tv
-// @version      3.0.0
-// @description  无视CORS、任意伪造UA/Referer、M3U8递归清洗去广告、AES-128密钥内联、CatVod JS爬虫沙箱
+// @version      3.1.0
+// @description  无视CORS、任意伪造UA/Referer、M3U8递归清洗去广告、AES-128密钥内联、CatVod JS爬虫沙箱、postMessage跨沙箱通信
 // @author       lublue147-netizen
 // @match        *://*/*
 // @grant        GM_xmlhttpRequest
@@ -18,14 +18,16 @@
 (function () {
   'use strict';
 
-  // 跨越沙箱：确保同时注入沙箱 window 与宿主 unsafeWindow
-  const globalObj = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+  console.log('🚀 [CatVod iOS Kernel] 脚本正在执行注入...');
 
   // ==========================================
-  // 1. 特权网络引擎 (GM_xmlhttpRequest Promise 封装)
+  // 1. 特权网络引擎 (GM_xmlhttpRequest)
   // ==========================================
   function gmFetch(url, options = {}) {
     return new Promise((resolve, reject) => {
+      if (typeof GM_xmlhttpRequest === 'undefined') {
+        return reject(new Error('GM_xmlhttpRequest 不存在'));
+      }
       GM_xmlhttpRequest({
         method: options.method || 'GET',
         url: url,
@@ -39,9 +41,8 @@
             status: res.status,
             finalUrl: res.finalUrl || url,
             headers: parseHeaders(res.responseHeaders),
-            text: () => Promise.resolve(res.responseText),
-            json: () => Promise.resolve(JSON.parse(res.responseText || '{}')),
-            arrayBuffer: () => Promise.resolve(res.response)
+            responseText: res.responseText,
+            response: res.response
           });
         },
         onerror: (err) => reject(new Error('GM网络请求失败: ' + (err.statusText || 'Network Error'))),
@@ -61,77 +62,17 @@
     return headers;
   }
 
-  // 蜂蜜 JS 爬虫全局 req / http 垫片
-  async function req(url, opt = {}) {
-    try {
-      const res = await gmFetch(url, {
-        method: opt.method || 'GET',
-        headers: opt.headers || {},
-        body: opt.data || opt.body || null,
-        timeout: opt.timeout || 15000
-      });
-      return {
-        code: res.status,
-        content: await res.text(),
-        headers: res.headers
-      };
-    } catch (e) {
-      return { code: 500, content: '', headers: {}, error: e.message };
-    }
-  }
-
   // ==========================================
-  // 2. HTML 解析垫片 (pdfh / pdfa / pd)
-  // ==========================================
-  function pdfh(html, expr) {
-    if (!html) return '';
-    try {
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const parts = expr.split('&&');
-      const selector = parts[0];
-      const target = parts[1] || 'text';
-
-      const el = doc.querySelector(selector);
-      if (!el) return '';
-      if (target === 'text') return el.textContent.trim();
-      if (target === 'html') return el.innerHTML.trim();
-      if (target.startsWith('tag=')) return el.getAttribute(target.slice(4)) || '';
-      return el.getAttribute(target) || el.textContent.trim();
-    } catch (e) {
-      return '';
-    }
-  }
-
-  function pdfa(html, expr) {
-    if (!html) return [];
-    try {
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      return Array.from(doc.querySelectorAll(expr)).map(el => el.outerHTML);
-    } catch (e) {
-      return [];
-    }
-  }
-
-  const pd = (html, expr) => pdfh(html, expr);
-
-  // 本地轻量 KV 存储
-  const local = {
-    get: (k, def = '') => (typeof GM_getValue !== 'undefined' ? GM_getValue(k, def) : (localStorage.getItem(k) || def)),
-    set: (k, v) => (typeof GM_setValue !== 'undefined' ? GM_setValue(k, v) : localStorage.setItem(k, v)),
-    delete: (k) => (typeof GM_deleteValue !== 'undefined' ? GM_deleteValue(k) : localStorage.removeItem(k))
-  };
-
-  // ==========================================
-  // 3. M3U8 智能清洗与去广告引擎 (Go 代理纯 JS 移植版)
+  // 2. M3U8 智能清洗与去广告引擎
   // ==========================================
   async function processM3U8Locally(m3u8Url, customHeaders = {}, maxRecursion = 2) {
-    if (maxRecursion <= 0) throw new Error('M3U8 嵌套层级超过最大限制');
+    if (maxRecursion <= 0) throw new Error('M3U8 嵌套层级超过限制');
 
     const res = await gmFetch(m3u8Url, { headers: customHeaders, responseType: 'text' });
-    const rawText = await res.text();
+    const rawText = res.responseText || '';
     const finalBaseUrl = new URL(res.finalUrl || m3u8Url);
 
-    // 1. 判断是否是 Master Playlist (二级分辨率索引)
+    // 1. 判断是否是 Master Playlist (二级索引)
     if (rawText.includes('#EXT-X-STREAM-INF')) {
       const lines = rawText.split('\n');
       let targetSubM3U8 = '';
@@ -146,7 +87,6 @@
         }
       }
       if (targetSubM3U8) {
-        console.log('[M3U8 Cleaner] 探测到 Master Playlist，自动递归解析:', targetSubM3U8);
         return await processM3U8Locally(targetSubM3U8, customHeaders, maxRecursion - 1);
       }
     }
@@ -161,7 +101,6 @@
       let line = lines[i].trim();
       if (!line) continue;
 
-      // 遇到不连续标记
       if (line.startsWith('#EXT-X-DISCONTINUITY')) {
         if (!inAdBlock) {
           inAdBlock = true;
@@ -173,7 +112,6 @@
         }
       }
 
-      // 如果当前处在广告块内部且切片较少（通常插播广告在 1~6 个切片）
       if (inAdBlock && line.startsWith('#EXTINF')) {
         adChunkCount++;
         if (adChunkCount <= 6) {
@@ -192,7 +130,7 @@
           const absKeyUrl = new URL(keyUri, finalBaseUrl).href;
           try {
             const keyRes = await gmFetch(absKeyUrl, { headers: customHeaders, responseType: 'arraybuffer' });
-            const keyBytes = new Uint8Array(keyRes.arrayBuffer());
+            const keyBytes = new Uint8Array(keyRes.response);
             let binary = '';
             for (let b = 0; b < keyBytes.byteLength; b++) {
               binary += String.fromCharCode(keyBytes[b]);
@@ -200,7 +138,6 @@
             const keyB64 = btoa(binary);
             line = line.replace(/URI="[^"]+"/, `URI="data:application/octet-stream;base64,${keyB64}"`);
           } catch (e) {
-            console.warn('[M3U8 Cleaner] 密钥内联失败，回退为绝对路径:', e.message);
             line = line.replace(/URI="[^"]+"/, `URI="${absKeyUrl}"`);
           }
         }
@@ -208,13 +145,11 @@
         continue;
       }
 
-      // 4. 其他标准协议头原样保留
       if (line.startsWith('#')) {
         output.push(line);
         continue;
       }
 
-      // 5. 切片路径补全为源站 CDN 绝对路径
       try {
         const absChunkUrl = new URL(line, finalBaseUrl).href;
         output.push(absChunkUrl);
@@ -229,40 +164,71 @@
   }
 
   // ==========================================
-  // 4. TS 伪装头剥离算法 (0x47 同步字节定位)
+  // 3. 双向 postMessage 通信桥 (突破 Safari 隔离沙箱)
   // ==========================================
-  function stripTsDisguiseHeader(arrayBuffer) {
-    const bytes = new Uint8Array(arrayBuffer);
-    let syncIndex = -1;
-    for (let i = 0; i < Math.min(bytes.length - 376, 2048); i++) {
-      if (bytes[i] === 0x47 && bytes[i + 188] === 0x47 && bytes[i + 376] === 0x47) {
-        syncIndex = i;
-        break;
+  window.addEventListener('message', async (event) => {
+    if (!event.data || event.data.source !== 'CATVOD_PAGE_REQUEST') return;
+
+    const { reqId, action, url, options } = event.data;
+
+    if (action === 'FETCH') {
+      try {
+        const res = await gmFetch(url, options || {});
+        window.postMessage({
+          source: 'CATVOD_KERNEL_RESPONSE',
+          reqId: reqId,
+          success: true,
+          res: res
+        }, '*');
+      } catch (err) {
+        window.postMessage({
+          source: 'CATVOD_KERNEL_RESPONSE',
+          reqId: reqId,
+          success: false,
+          error: err.message
+        }, '*');
+      }
+    } else if (action === 'CLEAN_M3U8') {
+      try {
+        const dataUri = await processM3U8Locally(url, (options && options.headers) || {});
+        window.postMessage({
+          source: 'CATVOD_KERNEL_RESPONSE',
+          reqId: reqId,
+          success: true,
+          dataUri: dataUri
+        }, '*');
+      } catch (err) {
+        window.postMessage({
+          source: 'CATVOD_KERNEL_RESPONSE',
+          reqId: reqId,
+          success: false,
+          error: err.message
+        }, '*');
       }
     }
-    return syncIndex > 0 ? arrayBuffer.slice(syncIndex) : arrayBuffer;
+  });
+
+  // 广播就绪信标
+  function sendBeacon() {
+    window.postMessage({ source: 'CATVOD_KERNEL_PONG', version: '3.1.0' }, '*');
+    try {
+      if (document.documentElement) {
+        document.documentElement.setAttribute('data-catvod-kernel', '3.1.0');
+      }
+    } catch (e) {}
   }
 
-  // ==========================================
-  // 5. 挂载到宿主全局对象
-  // ==========================================
-  const exports = {
-    gmFetch,
-    req,
-    http: req,
-    pdfh,
-    pdfa,
-    pd,
-    local,
-    processM3U8Locally,
-    stripTsDisguiseHeader,
-    isKernelLoaded: true,
-    version: '3.0.0'
-  };
+  sendBeacon();
+  setInterval(sendBeacon, 1000);
 
-  Object.assign(globalObj, exports);
-  console.log('🚀 [CatVod iOS Kernel] 蜂蜜纯前端特权内核 v3.0.0 已成功挂载！');
+  // 尝试直接挂载到 unsafeWindow (若环境支持)
+  try {
+    const targetObj = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+    targetObj.gmFetch = gmFetch;
+    targetObj.processM3U8Locally = processM3U8Locally;
+    targetObj.isKernelLoaded = true;
+    targetObj.version = '3.1.0';
+  } catch (e) {}
 
-  // 双重通信保障：派发自定义就绪事件
-  window.dispatchEvent(new CustomEvent('catvod-kernel-ready', { detail: exports }));
+  console.log('✅ [CatVod iOS Kernel] 内核 v3.1.0 postMessage 双向桥已启动！');
 })();

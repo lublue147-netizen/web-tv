@@ -28,14 +28,24 @@
       ];
 
       try {
-        const fetcher = global.req || global.gmFetch;
+        const fetcher = global.safeFetch || global.req || global.gmFetch;
         const res = await fetcher(this.siteUrl + '/');
         const html = res.content || (res.text ? await res.text() : '');
         const list = this._parseVodList(html);
-
-        return { class: classes, list: list };
+        if (list && list.length) {
+          return { class: classes, list: list };
+        }
       } catch (e) {
-        console.error('[Duboku] homeContent 异常:', e);
+        console.warn('[Duboku] 实时抓取未就绪，平滑降级至本地精选热播数据:', e.message);
+      }
+
+      // 兜底：从本地 initial-vod.json 秒开
+      try {
+        const localFetcher = global.safeFetch || window.fetch;
+        const fallbackRes = await localFetcher('./data/initial-vod.json');
+        const fallbackList = await fallbackRes.json();
+        return { class: classes, list: fallbackList || [] };
+      } catch (err) {
         return { class: classes, list: [] };
       }
     },
