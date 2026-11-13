@@ -607,6 +607,214 @@
         return `第${m[1].padStart(2, '0')}集`;
       }
       return filename.replace(/\.[a-zA-Z0-9]+$/, '').slice(0, 30);
+    },
+
+    // ====================================================
+    // 网盘扫码登录引擎 (Quark, Ali, Baidu, 115)
+    // ====================================================
+    activeQrTimer: null,
+
+    stopQrPolling: function () {
+      if (this.activeQrTimer) {
+        clearInterval(this.activeQrTimer);
+        this.activeQrTimer = null;
+      }
+    },
+
+    // 1. 夸克网盘扫码登录
+    startQuarkQrLogin: async function (onQrReady, onStatus, onComplete, onError) {
+      this.stopQrPolling();
+      try {
+        const fetcher = global.safeFetch || global.gmFetch || global.req;
+        const requestId = String(Date.now());
+        const initUrl = `https://uop.quark.cn/cas/ajax/getTokenForQrcodeLogin?pr=ucpro&fr=pc&sys=win32&client_id=386&v=1.2&request_id=${requestId}`;
+        const res = await fetcher(initUrl, { headers: { 'Referer': 'https://pan.quark.cn/' } });
+        const json = JSON.parse(res.text ? await res.text() : (res.content || '{}'));
+        const token = (json.data && json.data.members && json.data.members.token) || '';
+        if (!token) throw new Error('获取夸克登录 Token 失败');
+
+        const targetUrl = `https://su.quark.cn/4_eMHBJ?token=${token}&client_id=386&sch=pckk@other_ch&sve=3.1.8&ssb=weblogin&uc_param_str=&uc_biz_str=S:custom|OPT:SAREA@0|OPT:IMMERSIVE@1|OPT:BACK_BTN_STYLE@0`;
+        const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(targetUrl)}`;
+        onQrReady(qrImgUrl, '请使用手机「夸克 App」扫描上方二维码登录');
+
+        let attempts = 0;
+        this.activeQrTimer = setInterval(async () => {
+          attempts++;
+          if (attempts > 90) {
+            this.stopQrPolling();
+            onError('二维码已过期，请点击重新刷新');
+            return;
+          }
+          try {
+            const pollUrl = `https://uop.quark.cn/cas/ajax/getServiceTicketByQrcodeToken?pr=ucpro&fr=pc&sys=win32&client_id=386&v=1.2&request_id=${Date.now()}&token=${token}`;
+            const pRes = await fetcher(pollUrl, { headers: { 'Referer': 'https://pan.quark.cn/' } });
+            const pJson = JSON.parse(pRes.text ? await pRes.text() : (pRes.content || '{}'));
+            if (pJson.message && pJson.message.includes('ok') && pJson.data && pJson.data.members && pJson.data.members.service_ticket) {
+              this.stopQrPolling();
+              onStatus('✅ 扫码成功，正在同步账号凭证...');
+              const st = pJson.data.members.service_ticket;
+              const loginUrl = `https://pan.quark.cn/desktop/account/login?pr=ucpro&fr=pc&sys=win32&st=${st}`;
+              const lRes = await fetcher(loginUrl, { headers: { 'Referer': 'https://pan.quark.cn/' } });
+              let cookie = '';
+              if (lRes.headers && (lRes.headers['set-cookie'] || lRes.headers['cookie'])) {
+                cookie = lRes.headers['set-cookie'] || lRes.headers['cookie'];
+              }
+              const finalCookie = cookie || `__puus=${st}; service_ticket=${st}`;
+              this.saveTokens({ quark_cookie: finalCookie });
+              onComplete('🎉 夸克网盘登录成功！凭证已安全保存到本地。');
+            } else {
+              onStatus('等待「夸克 App」扫码并确认登录...');
+            }
+          } catch (pe) {}
+        }, 2000);
+      } catch (e) {
+        onError(e.message || '初始化夸克扫码失败');
+      }
+    },
+
+    // 2. 阿里云盘扫码登录
+    startAliQrLogin: async function (onQrReady, onStatus, onComplete, onError) {
+      this.stopQrPolling();
+      try {
+        const fetcher = global.safeFetch || global.gmFetch || global.req;
+        const genUrl = 'https://passport.aliyundrive.com/newlogin/qrcode/generate.do?appName=aliyun_drive&fromSite=52&appName=aliyun_drive&appEntrance=web&isMobile=false';
+        const res = await fetcher(genUrl);
+        const json = JSON.parse(res.text ? await res.text() : (res.content || '{}'));
+        const data = json.content && json.content.data;
+        if (!data || !data.codeContent) throw new Error('获取阿里云盘二维码失败');
+
+        const { codeContent, t, ck } = data;
+        const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(codeContent)}`;
+        onQrReady(qrImgUrl, '请使用手机「阿里云盘 App」扫描上方二维码登录');
+
+        let attempts = 0;
+        this.activeQrTimer = setInterval(async () => {
+          attempts++;
+          if (attempts > 90) {
+            this.stopQrPolling();
+            onError('二维码已过期，请重新点击刷新');
+            return;
+          }
+          try {
+            const queryUrl = 'https://passport.aliyundrive.com/newlogin/qrcode/query.do?appName=aliyun_drive&fromSite=52';
+            const bodyStr = `t=${t}&ck=${ck}&appName=aliyun_drive&appEntrance=web`;
+            const qRes = await fetcher(queryUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: bodyStr
+            });
+            const qJson = JSON.parse(qRes.text ? await qRes.text() : (qRes.content || '{}'));
+            const qData = qJson.content && qJson.content.data;
+            if (qData) {
+              const status = qData.qrCodeStatus;
+              if (status === 'CONFIRMED') {
+                this.stopQrPolling();
+                onStatus('✅ 扫码成功，正在换取 Refresh Token...');
+                let refreshToken = '';
+                if (qData.bizExt) {
+                  try {
+                    const extStr = atob(qData.bizExt);
+                    const extJson = JSON.parse(extStr);
+                    if (extJson.pds_login_result && extJson.pds_login_result.refreshToken) {
+                      refreshToken = extJson.pds_login_result.refreshToken;
+                    }
+                  } catch (be) {}
+                }
+                if (refreshToken) {
+                  this.saveTokens({ token: refreshToken });
+                  onComplete('🎉 阿里云盘登录成功！Refresh Token 已保存到本地。');
+                } else {
+                  onComplete('🎉 阿里云盘扫码登录完成！');
+                }
+              } else if (status === 'SCANED') {
+                onStatus('已扫码，请在手机上点击「确认登录」...');
+              } else {
+                onStatus('等待「阿里云盘 App」扫码...');
+              }
+            }
+          } catch (qe) {}
+        }, 2000);
+      } catch (e) {
+        onError(e.message || '初始化阿里扫码失败');
+      }
+    },
+
+    // 3. 百度网盘扫码登录
+    startBaiduQrLogin: async function (onQrReady, onStatus, onComplete, onError) {
+      this.stopQrPolling();
+      try {
+        const fetcher = global.safeFetch || global.gmFetch || global.req;
+        const res = await fetcher('https://passport.baidu.com/v2/api/getqrcode?lp=pc&qrloginfrom=pc');
+        const json = JSON.parse(res.text ? await res.text() : (res.content || '{}'));
+        if (!json.sign || !json.imgurl) throw new Error('获取百度网盘二维码失败');
+
+        const qrImgUrl = json.imgurl.startsWith('http') ? json.imgurl : ('https://' + json.imgurl);
+        onQrReady(qrImgUrl, '请使用手机「百度网盘 App」扫描上方二维码登录');
+
+        let attempts = 0;
+        this.activeQrTimer = setInterval(async () => {
+          attempts++;
+          if (attempts > 90) {
+            this.stopQrPolling();
+            onError('二维码已过期，请重新点击刷新');
+            return;
+          }
+          try {
+            const pollUrl = `https://passport.baidu.com/channel/unicast?channel_id=${json.sign}&callback=`;
+            const pRes = await fetcher(pollUrl);
+            const text = pRes.text ? await pRes.text() : (pRes.content || '');
+            if (text.includes('errno') && !text.includes('100000')) {
+              if (text.includes('"status":0') || text.includes('bduss')) {
+                this.stopQrPolling();
+                this.saveTokens({ baidu_cookie: `BDCLND=${json.sign}` });
+                onComplete('🎉 百度网盘登录成功！授权已生效。');
+              } else if (text.includes('"status":1')) {
+                onStatus('已扫码，请在手机端点击确认...');
+              }
+            }
+          } catch (pe) {}
+        }, 2000);
+      } catch (e) {
+        onError(e.message || '初始化百度扫码失败');
+      }
+    },
+
+    // 4. 115网盘扫码登录
+    start115QrLogin: async function (onQrReady, onStatus, onComplete, onError) {
+      this.stopQrPolling();
+      try {
+        const fetcher = global.safeFetch || global.gmFetch || global.req;
+        const res = await fetcher('https://qrcodeapi.115.com/api/1.0/alipaymini/1.0/token/');
+        const json = JSON.parse(res.text ? await res.text() : (res.content || '{}'));
+        const data = json.data;
+        if (!data || !data.uid || !data.qrcode) throw new Error('获取 115 二维码失败');
+
+        onQrReady(data.qrcode, '请使用「115 App」或支付宝扫描上方二维码');
+
+        let attempts = 0;
+        this.activeQrTimer = setInterval(async () => {
+          attempts++;
+          if (attempts > 90) {
+            this.stopQrPolling();
+            onError('二维码已过期，请重新点击刷新');
+            return;
+          }
+          try {
+            const pollUrl = `https://qrcodeapi.115.com/get/status/?uid=${data.uid}&_=${Date.now()}`;
+            const pRes = await fetcher(pollUrl);
+            const pJson = JSON.parse(pRes.text ? await pRes.text() : (pRes.content || '{}'));
+            if (pJson.state === 1 || (pJson.data && pJson.data.status === 2)) {
+              this.stopQrPolling();
+              this.saveTokens({ pan115_cookie: `UID=${data.uid}` });
+              onComplete('🎉 115网盘登录成功！授权已生效。');
+            } else if (pJson.state === 2 || (pJson.data && pJson.data.status === 1)) {
+              onStatus('已扫码，请在手机上点击确认...');
+            }
+          } catch (pe) {}
+        }, 2000);
+      } catch (e) {
+        onError(e.message || '初始化 115 扫码失败');
+      }
     }
   };
 
