@@ -1,0 +1,338 @@
+[
+  {
+    "key": "Douban",
+    "name": "🐮【豆瓣热榜】🐮",
+    "type": 3,
+    "api": "csp_NewDouBanGuard",
+    "ext": "https://cdn.waimaimingtang.com/file/images/bwc/20260414181247-ae51abfbfe.txt"
+  },
+  {
+    "key": "SubVersion",
+    "name": "🚀【订阅版本: v3.0.7 · 2026-10-18】🚀",
+    "type": 3,
+    "api": "csp_NewDouBanGuard",
+    "ext": "https://cdn.waimaimingtang.com/file/images/bwc/20260414181247-ae51abfbfe.txt"
+  },
+  {
+    "key": "Wexconfig",
+    "name": "🐮网盘┃配置🐮",
+    "type": 3,
+    "api": "csp_PanConfigGuard",
+    "ext": null
+  },
+  {
+    "key": "MyPan",
+    "name": "🐮我的┃网盘🐮",
+    "type": 3,
+    "api": "csp_MyPanGuard",
+    "ext": null
+  },
+  {
+    "key": "Lxyy",
+    "name": "❄️洛雪┃TV❄️",
+    "type": 3,
+    "api": "csp_LxyyGuard",
+    "ext": "https://tv.lxyy.club"
+  },
+  {
+    "key": "YouTube",
+    "name": "▶️YouTube┃油管精选▶️",
+    "type": 3,
+    "api": "csp_YouTubeGuard",
+    "ext": "https://www.youtube.com"
+  },
+  {
+    "key": "CineVid",
+    "name": "🎬CineVid┃欧美影视🎬",
+    "type": 3,
+    "api": "csp_CineVidGuard",
+    "ext": "https://cinevid.st"
+  },
+  {
+    "key": "CineBy",
+    "name": "🎬Cineby┃欧美高清🎬",
+    "type": 3,
+    "api": "csp_CineByGuard",
+    "ext": "https://cineby.tech"
+  },
+  {
+    "key": "CineJoy",
+    "name": "🎬Cinejoy┃欧美极速🎬",
+    "type": 3,
+    "api": "csp_CineJoyGuard",
+    "ext": "https://cinejoy.pk"
+  },
+  {
+    "key": "TheTVApp",
+    "name": "🏆TheTVApp┃体育赛事🏆",
+    "type": 3,
+    "api": "csp_TheTVAppGuard",
+    "ext": "https://thetvapp.st"
+  },
+  {
+    "key": "GuardianTV",
+    "name": "🛡️GuardianTV┃全球直播🛡️",
+    "type": 3,
+    "api": "csp_GuardianTVGuard",
+    "ext": "https://www.guardiantv.live"
+  },
+  {
+    "key": "DaddyLive",
+    "name": "📻DaddyLive┃全球直播📻",
+    "type": 3,
+    "api": "csp_DaddyLiveGuard",
+    "ext": "https://thedaddy.li"
+  },
+  {
+    "key": "LiveTVGarden",
+    "name": "🌿LiveTVGarden┃全球电视🌿",
+    "type": 3,
+    "api": "csp_LiveTVGardenGuard",
+    "ext": "https://www.livetvgarden.com"
+  },
+  {
+    "key": "LiveHDTV",
+    "name": "📺LiveHDTV┃全球高清电视📺",
+    "type": 3,
+    "api": "csp_LiveHDTVGuard",
+    "ext": "https://www.livehdtv.net"
+  },
+  {
+    "key": "TMDB",
+    "name": "🎬TMDB┃全球影视榜🎬",
+    "type": 3,
+    "api": "csp_TMDBGuard",
+    "ext": null
+  },
+  {
+    "key": "KkYS",
+    "name": "🎬可可┃影视🎬",
+    "type": 3,
+    "api": "csp_KkYSGuard",
+    "ext": "https://www.kkys14.com"
+  },
+  {
+    "key": "Ymck",
+    "name": "🐱影猫┃仓库🐱",
+    "type": 3,
+    "api": "csp_YmckGuard",
+    "ext": "https://www.ymck.pro"
+  },
+  {
+    "key": "DuBoKu",
+    "name": "💥独播┃秒播💥",
+    "type": 3,
+    "api": "csp_DuBoKuGuard",
+    "ext": "https://www.dbku.tv"
+  },
+  {
+    "key": "Aeete",
+    "name": "🎬欧特┃秒播🎬",
+    "type": 3,
+    "api": "csp_AeeteGuard",
+    "ext": "https://www.aeete.com"
+  },
+  {
+    "key": "KanMovie",
+    "name": "🍉西瓜┃秒播🍉",
+    "type": 3,
+    "api": "csp_KanMovieGuard",
+    "ext": "https://www.kanmovie.com"
+  },
+  {
+    "key": "JuOk",
+    "name": "💥剧OK┃秒播💥",
+    "type": 3,
+    "api": "csp_JuOkGuard",
+    "ext": "https://juok3.top"
+  },
+  {
+    "key": "ChuangXiang",
+    "name": "✨创享┃秒播✨",
+    "type": 3,
+    "api": "csp_ChuangXiangGuard",
+    "ext": "https://ys.cxkjg.cn"
+  },
+  {
+    "key": "MoGu",
+    "name": "🍄蘑菇┃秒播专线🍄",
+    "type": 3,
+    "api": "csp_MoGuGuard",
+    "ext": "https://ysjx01.5o5k.com"
+  },
+  {
+    "key": "YingHua",
+    "name": "🌸樱花动漫┃秒播专线🌸",
+    "type": 3,
+    "api": "csp_YingHuaGuard",
+    "ext": "https://yinghua.in"
+  },
+  {
+    "key": "DongPian",
+    "name": "🎬懂片帝┃AI秒播🎬",
+    "type": 3,
+    "api": "csp_DongPianGuard",
+    "ext": "https://dongpian17.com"
+  },
+  {
+    "key": "Libvio",
+    "name": "💓立播┃秒播4K💓",
+    "type": 3,
+    "api": "csp_LibvioGuard",
+    "ext": "https://www.libvio.io"
+  },
+  {
+    "key": "YYeTs",
+    "name": "👥人人影视┃秒播👥",
+    "type": 3,
+    "api": "csp_YYeTsGuard",
+    "ext": "https://yyets.click"
+  },
+  {
+    "key": "玩偶哥哥",
+    "name": "💓玩偶哥哥┃4K💓",
+    "type": 3,
+    "api": "csp_AiNewWoggGuard",
+    "ext": null
+  },
+  {
+    "key": "花卷",
+    "name": "💓花卷┃4K💓",
+    "type": 3,
+    "api": "csp_AiNewHuaJuanGuard",
+    "ext": null
+  },
+  {
+    "key": "AiNewGuanYing",
+    "name": "💓观影┃4K💓",
+    "type": 3,
+    "api": "csp_AiNewGuanYingGuard",
+    "ext": null
+  },
+  {
+    "key": "AiQwMkv",
+    "name": "💓七味┃4K💓",
+    "type": 3,
+    "api": "csp_AiQwMkvGuard",
+    "ext": null
+  },
+  {
+    "key": "AiNewPianKu",
+    "name": "💓盘库┃4K💓",
+    "type": 3,
+    "api": "csp_AiNewPianKuGuard",
+    "ext": null
+  },
+  {
+    "key": "AiNewLibvio",
+    "name": "💓立播┃4K💓",
+    "type": 3,
+    "api": "csp_AiNewLibvioGuard",
+    "ext": "https://www.libvio.io"
+  },
+  {
+    "key": "ZhuiJu",
+    "name": "🎬追剧吧┃4K🎬",
+    "type": 3,
+    "api": "csp_ZhuiJuGuard",
+    "ext": null
+  },
+  {
+    "key": "GuGeSo",
+    "name": "🔍谷歌搜┃4K🔍",
+    "type": 3,
+    "api": "csp_GuGeSoGuard",
+    "ext": null
+  },
+  {
+    "key": "KkSo",
+    "name": "⚡快快搜┃4K⚡",
+    "type": 3,
+    "api": "csp_KkSoGuard",
+    "ext": null
+  },
+  {
+    "key": "PanSou",
+    "name": "🎠盘搜┃4K🎠",
+    "type": 3,
+    "api": "csp_PanSouGuard",
+    "ext": null
+  },
+  {
+    "key": "GoGoPanSo",
+    "name": "🐕狗狗盘搜┃4K🐕",
+    "type": 3,
+    "api": "csp_GoGoPanSoGuard",
+    "ext": "https://gogopanso.com:3642"
+  },
+  {
+    "key": "QuanPan",
+    "name": "🌐全盘搜索┃4K🌐",
+    "type": 3,
+    "api": "csp_QuanPanGuard",
+    "ext": "https://quanpan.xyz"
+  },
+  {
+    "key": "GuangYa",
+    "name": "🦆光鸭┃4K🦆",
+    "type": 3,
+    "api": "csp_GuangYaGuard",
+    "ext": null
+  },
+  {
+    "key": "WexHanXiaoQuan",
+    "name": "💥韩剧┃秒播💥",
+    "type": 3,
+    "api": "csp_WexAiHanXiaoQuanGuard",
+    "ext": null
+  },
+  {
+    "key": "WexAiGuaZi",
+    "name": "💥瓜子┃秒播💥",
+    "type": 3,
+    "api": "csp_WexAiGuaZiGuard",
+    "ext": null
+  },
+  {
+    "key": "WexAiJianPian",
+    "name": "💥贱片┃秒播💥",
+    "type": 3,
+    "api": "csp_WexAiJianPianGuard",
+    "ext": null
+  },
+  {
+    "key": "AnimeXiFan",
+    "name": "🤡稀饭┃动漫🤡",
+    "type": 3,
+    "api": "csp_AnimeXiFanGuard",
+    "ext": null
+  },
+  {
+    "key": "LiveAiBiLi",
+    "name": "🅱️哔哩┃直播🅱️",
+    "type": 3,
+    "api": "csp_LiveAiBiLiGuard",
+    "ext": null
+  },
+  {
+    "key": "SoAiHaiYin",
+    "name": "🎠盘搜┃综合🎠",
+    "type": 3,
+    "api": "csp_SoAiHaiYinGuard",
+    "ext": null
+  },
+  {
+    "key": "SoKaKa",
+    "name": "🎠卡卡┃综合🎠",
+    "type": 3,
+    "api": "csp_SoKaKaGuard",
+    "ext": null
+  },
+  {
+    "key": "push_agent",
+    "name": "推送",
+    "type": 3,
+    "api": "csp_PushGuard",
+    "ext": null
+  }
+]

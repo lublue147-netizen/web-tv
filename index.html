@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="referrer" content="no-referrer" />
+  <title>📺 蜂蜜 Web TV (iOS 原生端)</title>
+  <style>
+    :root {
+      --bg: #0b0d14;
+      --card-bg: rgba(22, 26, 38, 0.78);
+      --card-hover: rgba(35, 41, 60, 0.95);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent: #0a84ff;
+      --accent-hover: #0071e3;
+      --accent-glow: rgba(10, 132, 255, 0.35);
+      --text: #f5f5f7;
+      --text-sub: #86868b;
+      --success: #30d158;
+      --warning: #ffd60a;
+      --danger: #ff453a;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Roboto, sans-serif;
+      margin: 0;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 顶部导航 */
+    header {
+      background: rgba(11, 13, 20, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      position: sticky;
+      top: 0;
+      z-index: 90;
+      border-bottom: 1px solid var(--card-border);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .badge-kernel {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .badge-kernel.ready {
+      background: rgba(48, 209, 88, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(48, 209, 88, 0.3);
+    }
+    .badge-kernel.warning {
+      background: rgba(255, 69, 58, 0.15);
+      color: var(--danger);
+      border: 1px solid rgba(255, 69, 58, 0.3);
+    }
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* 播放器核心 */
+    .player-section {
+      background: #000;
+      width: 100%;
+      position: relative;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.8);
+      z-index: 80;
+    }
+    .video-wrap {
+      max-width: 1000px;
+      margin: 0 auto;
+      position: relative;
+    }
+    video {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      display: block;
+    }
+    .player-bar {
+      background: rgba(18, 21, 31, 0.95);
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      border-top: 1px solid var(--card-border);
+    }
+    .player-title {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 60%;
+      font-weight: 500;
+    }
+    .player-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .p-btn {
+      background: rgba(255,255,255,0.08);
+      border: none;
+      color: #fff;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    /* 主体布局 */
+    main {
+      flex: 1;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 14px;
+    }
+
+    /* 导航标签 */
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+    .nav-tab {
+      padding: 8px 18px;
+      border-radius: 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-sub);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .nav-tab.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      box-shadow: 0 4px 14px var(--accent-glow);
+    }
+
+    /* 控制栏 (站点/分类/搜索) */
+    .control-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+      align-items: center;
+    }
+    .site-select, .search-input {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      outline: none;
+    }
+    .site-select {
+      flex: 0 0 auto;
+      min-width: 140px;
+      cursor: pointer;
+    }
+    .search-box {
+      flex: 1;
+      display: flex;
+      gap: 8px;
+    }
+    .search-input {
+      flex: 1;
+      min-width: 120px;
+    }
+    .btn-search {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 0 16px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* 分类标签栏 */
+    .cat-tags {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 16px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .cat-tags::-webkit-scrollbar { display: none; }
+    .cat-tag {
+      padding: 5px 12px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid transparent;
+      color: var(--text-sub);
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .cat-tag.active {
+      background: rgba(10, 132, 255, 0.2);
+      color: var(--accent);
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* 海报墙网格 */
+    .vod-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    @media (min-width: 768px) {
+      .vod-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 18px; }
+    }
+    .vod-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .vod-card:active {
+      transform: scale(0.96);
+    }
+    .poster-wrap {
+      width: 100%;
+      aspect-ratio: 2 / 3;
+      background: #1a1d28;
+      position: relative;
+      overflow: hidden;
+    }
+    .poster-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.3s;
+    }
+    .vod-card:hover .poster-img {
+      transform: scale(1.05);
+    }
+    .remark-badge {
+      position: absolute;
+      bottom: 6px;
+      right: 6px;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      color: #fff;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+      max-width: 90%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .vod-info {
+      padding: 10px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .vod-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-bottom: 4px;
+    }
+
+    /* 分页按钮栏 */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      margin: 20px 0;
+    }
+    .btn-page {
+      padding: 8px 18px;
+      border-radius: 8px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: #fff;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    /* 选集抽屉 / 详情弹窗 */
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(10px);
+      z-index: 1000;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .drawer-overlay.active {
+      display: flex;
+    }
+    .drawer-content {
+      background: #161822;
+      border-top: 1px solid var(--card-border);
+      border-radius: 20px 20px 0 0;
+      width: 100%;
+      max-width: 760px;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      animation: slideUp 0.25s ease-out;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .btn-close {
+      background: rgba(255,255,255,0.1);
+      border: none;
+      color: #fff;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .detail-top {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .detail-poster {
+      width: 90px;
+      aspect-ratio: 2/3;
+      border-radius: 8px;
+      object-fit: cover;
+      background: #222;
+    }
+    .detail-meta h2 {
+      font-size: 18px;
+      margin: 0 0 6px 0;
+    }
+    .detail-meta p {
+      margin: 3px 0;
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+    .detail-desc {
+      font-size: 13px;
+      color: #ccc;
+      line-height: 1.5;
+      margin-bottom: 16px;
+      max-height: 80px;
+      overflow-y: auto;
+    }
+    .ep-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .ep-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+      gap: 8px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    .ep-btn {
+      padding: 10px 4px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--card-border);
+      color: #fff;
+      font-size: 12px;
+      text-align: center;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ep-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      font-weight: 600;
+      box-shadow: 0 2px 10px var(--accent-glow);
+    }
+
+    /* 直播频道列表 */
+    .live-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .live-channels-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+      max-height: 520px;
+      overflow-y: auto;
+    }
+    .channel-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 12px 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .channel-card:active {
+      background: var(--accent);
+      color: #fff;
+    }
+    .channel-name {
+      font-size: 14px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .channel-group {
+      font-size: 11px;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    /* 设置与说明卡片 */
+    .setting-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+    .code-box {
+      background: #000;
+      color: #38bdf8;
+      padding: 12px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 12px;
+      word-break: break-all;
+      margin-top: 8px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. 顶部状态栏 -->
+  <header>
+    <div class="brand">
+      <span>📺</span>
+      <span>蜂蜜 Web TV</span>
+    </div>
+    <div id="kernel-badge" class="badge-kernel warning" onclick="showKernelModal()">
+      <span class="dot"></span>
+      <span id="kernel-label">内核检测中...</span>
+    </div>
+  </header>
+
+  <!-- 2. 原生 AVPlayer / HLS 播放器 -->
+  <div class="player-section">
+    <div class="video-wrap">
+      <video
+        id="player"
+        controls
+        playsinline
+        webkit-playsinline
+        disableRemotePlayback
+        referrerpolicy="no-referrer"
+      ></video>
+      <div class="player-bar">
+        <div id="current-play-title" class="player-title">等待播放影片或电视频道</div>
+        <div class="player-actions">
+          <button class="p-btn" onclick="togglePip()">画中画</button>
+          <button class="p-btn" onclick="toggleSpeed()">倍速</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 主界面操作区 -->
+  <main>
+    <!-- 顶部四项主功能 Tab -->
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="switchView('vod')">🎬 点播大厅</button>
+      <button class="nav-tab" onclick="switchView('live')">📺 电视直播</button>
+      <button class="nav-tab" onclick="switchView('history')">⭐️ 追剧历史</button>
+      <button class="nav-tab" onclick="switchView('settings')">⚙️ 内核与设置</button>
+    </div>
+
+    <!-- ==================== 视图 1：点播大厅 ==================== -->
+    <div id="view-vod">
+      <div class="control-row">
+        <!-- 站点选择 -->
+        <select id="site-select" class="site-select" onchange="onSiteChange()">
+          <!-- 动态注入从 subscription 迁移过来的站源 -->
+        </select>
+
+        <!-- 搜索栏 -->
+        <div class="search-box">
+          <input type="text" id="vod-search" class="search-input" placeholder="输入影视名称，支持全网聚合检索..." onkeydown="if(event.key==='Enter') doSearch()" />
+          <button class="btn-search" onclick="doSearch()">搜索</button>
+        </div>
+      </div>
+
+      <!-- 分类标签 -->
+      <div id="cat-tags" class="cat-tags">
+        <div class="cat-tag active" onclick="onCategoryChange('')">全部</div>
+      </div>
+
+      <!-- 影片海报网格 -->
+      <div id="vod-grid" class="vod-grid">
+        <!-- 动态渲染影视海报 -->
+      </div>
+
+      <!-- 分页栏 -->
+      <div class="pagination">
+        <button class="btn-page" onclick="changePage(-1)">上一页</button>
+        <span id="page-indicator" style="font-size:13px; color:var(--text-sub);">第 1 页</span>
+        <button class="btn-page" onclick="changePage(1)">下一页</button>
+      </div>
+    </div>
+
+    <!-- ==================== 视图 2：电视直播 (IPTV) ==================== -->
+    <div id="view-live" style="display:none;">
+      <div class="control-row">
+        <select id="live-group-select" class="site-select" onchange="filterLiveGroup()">
+          <option value="">全部频道分组</option>
+        </select>
+        <div class="search-box">
+          <input type="text" id="live-search" class="search-input" placeholder="搜索电视频道 (如 CCTV, 卫视, 体育...)" oninput="filterLiveSearch()" />
+        </div>
+      </div>
+
+      <div class="live-layout">
+        <div id="live-channels" class="live-channels-grid">
+          <!-- 动态注入 5000+ 频道 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 视图 3：追剧历史 ==================== -->
+    <div id="view-history" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="margin:0; font-size:16px;">最近播放记录</h3>
+        <button class="p-btn" onclick="clearHistory()">清空历史</button>
+      </div>
+      <div id="history-grid" class="vod-grid">
+        <!-- 历史记录网格 -->
+      </div>
+    </div>
+
+    <!-- ==================== 视图 4：内核与设置 ==================== -->
+    <div id="view-settings" style="display:none;">
+      <div class="setting-card">
+        <h3 style="margin-top:0;">📱 iOS 油猴内核驱动 (Userscripts / Stay)</h3>
+        <p style="font-size:13px; color:var(--text-sub); line-height:1.6;">
+          本系统将 <strong>Go 代理的所有解密与 M3U8 清洗引擎</strong> 100% 迁移到了纯前端。配合 iOS Userscripts / Stay 脚本扩展，即可获得无限跨域、自定义 Referer/UA、M3U8 切片广告剔除等特权能力。
+        </p>
+        <div style="display:flex; gap:10px; margin-top:12px;">
+          <button class="btn-search" onclick="installKernel()">📥 安装 / 重新加载内核脚本</button>
+          <button class="p-btn" onclick="copyKernelCode()">📋 复制内核代码</button>
+        </div>
+      </div>
+
+      <div class="setting-card">
+        <h3 style="margin-top:0;">📺 电视直播源配置 (M3U)</h3>
+        <p style="font-size:13px; color:var(--text-sub);">
+          当前默认读取本地 <code>data/iptv.m3u</code>，共包含 5000+ 国内外频道。
+        </p>
+        <input type="text" id="custom-m3u-input" class="search-input" value="./data/iptv.m3u" style="width:100%;" />
+        <button class="btn-search" style="margin-top:10px; width:100%; padding:10px;" onclick="reloadCustomM3u()">重新加载直播源</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- 4. 详情与选集抽屉 -->
+  <div id="drawer-overlay" class="drawer-overlay" onclick="if(event.target===this) closeDrawer()">
+    <div class="drawer-content">
+      <div class="drawer-header">
+        <h3 style="margin:0; font-size:16px;">影片详情与选集</h3>
+        <button class="btn-close" onclick="closeDrawer()">✕</button>
+      </div>
+
+      <div class="detail-top">
+        <img id="detail-pic" class="detail-poster" src="" alt="海报" />
+        <div class="detail-meta">
+          <h2 id="detail-title">影片标题</h2>
+          <p id="detail-remarks">更新状态</p>
+          <p id="detail-actors">主演: -</p>
+          <p id="detail-director">导演: -</p>
+        </div>
+      </div>
+
+      <div id="detail-desc" class="detail-desc">简介加载中...</div>
+
+      <div class="ep-title">
+        <span>播放线路与选集</span>
+        <span id="detail-from" style="font-size:12px; color:var(--accent);">独播秒播专线</span>
+      </div>
+
+      <div id="detail-ep-grid" class="ep-grid">
+        <!-- 动态生成剧集按钮 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 引入依赖脚本：内核注册表与各爬虫适配器 -->
+  <script src="./kernel/catvod-ios-kernel.user.js"></script>
+  <script src="./spiders/duboku.js"></script>
+  <script src="./spiders/douban.js"></script>
+  <script src="./spiders/cms.js"></script>
+  <script src="./spiders/registry.js"></script>
+
+  <!-- 主业务逻辑控制器 -->
+  <script>
+    // ====================================================
+    // 全局状态
+    // ====================================================
+    const video = document.getElementById('player');
+    let currentSite = null;
+    let currentTid = '';
+    let currentPage = 1;
+    let currentVodDetail = null;
+    let currentPlayIndex = 0;
+    let allLiveChannels = [];
+    let playbackSpeeds = [1.0, 1.25, 1.5, 2.0, 0.75];
+    let currentSpeedIdx = 0;
+
+    // ====================================================
+    // 1. 内核检测与引导
+    // ====================================================
+    function initKernelCheck() {
+      const isLoaded = typeof window.isKernelLoaded !== 'undefined' && window.isKernelLoaded;
+      const badge = document.getElementById('kernel-badge');
+      const label = document.getElementById('kernel-label');
+
+      if (isLoaded) {
+        badge.className = 'badge-kernel ready';
+        label.textContent = 'iOS 特权内核已就绪 v' + (window.version || '3.0.0');
+      } else {
+        badge.className = 'badge-kernel warning';
+        label.textContent = '⚠️ 扩展内核未连接 (点击排查)';
+        setTimeout(initKernelCheck, 800);
+      }
+    }
+    window.addEventListener('catvod-kernel-ready', initKernelCheck);
+
+    function showKernelModal() {
+      if (window.isKernelLoaded) {
+        alert('🎉 iOS 特权内核运行正常！\n\n- 跨域限制已解除\n- M3U8 去广告与密钥内联已开启\n- 100% 手机本地流量解析');
+      } else {
+        alert('⚠️ 尚未检测到 Userscripts 或 Stay 扩展内核。\n\n请在 iPhone Safari 中确保已安装 Userscripts / Stay，并启用了 catvod-ios-kernel.user.js。');
+      }
+    }
+
+    function installKernel() {
+      window.open('./kernel/catvod-ios-kernel.user.js', '_blank');
+    }
+
+    async function copyKernelCode() {
+      try {
+        const res = await fetch('./kernel/catvod-ios-kernel.user.js');
+        const text = await res.text();
+        await navigator.clipboard.writeText(text);
+        alert('✅ 内核脚本已复制到剪贴板！请前往 Userscripts / Stay 中直接新建粘贴。');
+      } catch (e) {
+        alert('复制失败，请直接打开文件复制。');
+      }
+    }
+
+    // ====================================================
+    // 2. 站点与点播初始化
+    // ====================================================
+    function initSites() {
+      const select = document.getElementById('site-select');
+      select.innerHTML = '';
+
+      if (window.SiteRegistry && window.SiteRegistry.sites) {
+        window.SiteRegistry.sites.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.key;
+          opt.textContent = s.name;
+          select.appendChild(opt);
+        });
+        currentSite = window.SiteRegistry.sites[0];
+        loadSiteHome();
+      }
+    }
+
+    function onSiteChange() {
+      const key = document.getElementById('site-select').value;
+      currentSite = window.SiteRegistry.getSite(key);
+      currentTid = '';
+      currentPage = 1;
+      loadSiteHome();
+    }
+
+    async function loadSiteHome() {
+      if (!currentSite || !currentSite.instance) return;
+      showLoadingGrid();
+
+      try {
+        const res = await currentSite.instance.homeContent(true);
+        const data = typeof res === 'string' ? JSON.parse(res) : res;
+
+        // 渲染分类
+        renderCategories(data.class || []);
+        // 渲染推荐列表
+        renderVodList(data.list || []);
+      } catch (e) {
+        console.error('加载站点失败:', e);
+        showEmptyGrid('加载失败: ' + e.message);
+      }
+    }
+
+    function renderCategories(classes) {
+      const container = document.getElementById('cat-tags');
+      container.innerHTML = '';
+
+      const allTag = document.createElement('div');
+      allTag.className = 'cat-tag' + (currentTid === '' ? ' active' : '');
+      allTag.textContent = '全部';
+      allTag.onclick = () => onCategoryChange('');
+      container.appendChild(allTag);
+
+      classes.forEach(c => {
+        const tag = document.createElement('div');
+        tag.className = 'cat-tag' + (currentTid === c.type_id ? ' active' : '');
+        tag.textContent = c.type_name;
+        tag.onclick = () => onCategoryChange(c.type_id);
+        container.appendChild(tag);
+      });
+    }
+
+    async function onCategoryChange(tid) {
+      currentTid = tid;
+      currentPage = 1;
+      document.querySelectorAll('.cat-tag').forEach(el => {
+        el.classList.toggle('active', el.textContent === (tid ? tid : '全部'));
+      });
+
+      if (!tid) {
+        loadSiteHome();
+        return;
+      }
+
+      showLoadingGrid();
+      try {
+        const res = await currentSite.instance.categoryContent(tid, currentPage);
+        const data = typeof res === 'string' ? JSON.parse(res) : res;
+        renderVodList(data.list || []);
+        document.getElementById('page-indicator').textContent = `第 ${currentPage} 页`;
+      } catch (e) {
+        showEmptyGrid('分类加载异常');
+      }
+    }
+
+    async function changePage(delta) {
+      const newPage = currentPage + delta;
+      if (newPage < 1) return;
+      currentPage = newPage;
+      showLoadingGrid();
+
+      try {
+        let res;
+        if (currentTid) {
+          res = await currentSite.instance.categoryContent(currentTid, currentPage);
+        } else {
+          res = await currentSite.instance.homeContent(true);
+        }
+        const data = typeof res === 'string' ? JSON.parse(res) : res;
+        renderVodList(data.list || []);
+        document.getElementById('page-indicator').textContent = `第 ${currentPage} 页`;
+        window.scrollTo({ top: 300, behavior: 'smooth' });
+      } catch (e) {
+        showEmptyGrid('翻页失败');
+      }
+    }
+
+    async function doSearch() {
+      const keyword = document.getElementById('vod-search').value.trim();
+      if (!keyword) return loadSiteHome();
+
+      showLoadingGrid();
+      try {
+        const res = await currentSite.instance.searchContent(keyword, false);
+        const data = typeof res === 'string' ? JSON.parse(res) : res;
+        renderVodList(data.list || []);
+        document.getElementById('page-indicator').textContent = `搜索: ${keyword}`;
+      } catch (e) {
+        showEmptyGrid('搜索无匹配结果');
+      }
+    }
+
+    function renderVodList(list) {
+      const grid = document.getElementById('vod-grid');
+      grid.innerHTML = '';
+
+      if (!list || !list.length) {
+        showEmptyGrid('暂无影视数据');
+        return;
+      }
+
+      list.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'vod-card';
+        card.innerHTML = `
+          <div class="poster-wrap">
+            <img class="poster-img" src="${item.vod_pic || './assets/poster-default.png'}" alt="${item.vod_name}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 150%22><rect width=%22100%22 height=%22150%22 fill=%22%23222%22/><text x=%2250%22 y=%2275%22 fill=%22%23666%22 font-size=%2212%22 text-anchor=%22middle%22>暂无海报</text></svg>'" />
+            <div class="remark-badge">${item.vod_remarks || ''}</div>
+          </div>
+          <div class="vod-info">
+            <div class="vod-title" title="${item.vod_name}">${item.vod_name}</div>
+          </div>
+        `;
+        card.onclick = () => openVodDetail(item);
+        grid.appendChild(card);
+      });
+    }
+
+    function showLoadingGrid() {
+      const grid = document.getElementById('vod-grid');
+      grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding:50px; color:var(--text-sub);">⚡ 正在通过本地特权网络抓取影视数据...</div>';
+    }
+
+    function showEmptyGrid(msg) {
+      const grid = document.getElementById('vod-grid');
+      grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:50px; color:var(--text-sub);">${msg}</div>`;
+    }
+
+    // ====================================================
+    // 3. 详情与选集弹窗
+    // ====================================================
+    async function openVodDetail(vodSummary) {
+      // 若是豆瓣聚合项目，点击自动发起搜片
+      if (vodSummary.vod_id && currentSite.key === 'douban') {
+        document.getElementById('vod-search').value = vodSummary.vod_name;
+        // 自动切到独播库或采集站搜索真实片源
+        document.getElementById('site-select').value = 'duboku';
+        onSiteChange();
+        setTimeout(doSearch, 300);
+        return;
+      }
+
+      const overlay = document.getElementById('drawer-overlay');
+      overlay.classList.add('active');
+
+      document.getElementById('detail-title').textContent = vodSummary.vod_name;
+      document.getElementById('detail-pic').src = vodSummary.vod_pic || '';
+      document.getElementById('detail-remarks').textContent = vodSummary.vod_remarks || '';
+      document.getElementById('detail-desc').textContent = '正在获取全集与播放直链...';
+      document.getElementById('detail-ep-grid').innerHTML = '加载中...';
+
+      try {
+        const res = await currentSite.instance.detailContent([vodSummary.vod_id]);
+        const data = typeof res === 'string' ? JSON.parse(res) : res;
+        const detail = (data.list && data.list[0]) ? data.list[0] : vodSummary;
+        currentVodDetail = detail;
+
+        document.getElementById('detail-desc').textContent = detail.vod_content || '暂无影片简介';
+        document.getElementById('detail-actors').textContent = '主演: ' + (detail.vod_actor || '-');
+        document.getElementById('detail-director').textContent = '导演: ' + (detail.vod_director || '-');
+        document.getElementById('detail-from').textContent = detail.vod_play_from || '极速秒播线路';
+
+        // 解析剧集列表
+        renderEpisodes(detail.vod_play_url || '');
+      } catch (e) {
+        document.getElementById('detail-desc').textContent = '获取剧集列表失败: ' + e.message;
+      }
+    }
+
+    function renderEpisodes(playUrlsStr) {
+      const epContainer = document.getElementById('detail-ep-grid');
+      epContainer.innerHTML = '';
+
+      if (!playUrlsStr) {
+        epContainer.innerHTML = '暂无选集';
+        return;
+      }
+
+      // 选集格式通常为: "第01集$url#第02集$url"
+      const mainGroup = playUrlsStr.split('$$$')[0];
+      const items = mainGroup.split('#');
+
+      items.forEach((item, idx) => {
+        const parts = item.split('$');
+        const epName = parts[0] || `第 ${idx + 1} 集`;
+        const epPlayId = parts[1] || parts[0];
+
+        const btn = document.createElement('button');
+        btn.className = 'ep-btn' + (idx === currentPlayIndex ? ' active' : '');
+        btn.textContent = epName;
+        btn.onclick = () => {
+          currentPlayIndex = idx;
+          document.querySelectorAll('.ep-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          playEpisode(epName, epPlayId);
+        };
+        epContainer.appendChild(btn);
+      });
+    }
+
+    function closeDrawer() {
+      document.getElementById('drawer-overlay').classList.remove('active');
+    }
+
+    // ====================================================
+    // 4. 流媒体投递与去广告清洗播放
+    // ====================================================
+    async function playEpisode(epName, epPlayId) {
+      const fullTitle = `${currentVodDetail.vod_name} - ${epName}`;
+      document.getElementById('current-play-title').textContent = '⏳ 解析直链: ' + fullTitle;
+
+      try {
+        let playResult = await currentSite.instance.playerContent('', epPlayId, []);
+        if (typeof playResult === 'string') playResult = JSON.parse(playResult);
+
+        const targetUrl = playResult.url || epPlayId;
+        const headers = playResult.header || {};
+
+        await executePlayback(targetUrl, fullTitle, headers);
+        saveHistory(currentVodDetail, epName, epPlayId);
+        closeDrawer();
+      } catch (e) {
+        alert('解析播放失败: ' + e.message);
+      }
+    }
+
+    async function executePlayback(url, title, headers = {}) {
+      document.getElementById('current-play-title').textContent = '⚡ 准备播放: ' + title;
+
+      try {
+        if (url.includes('.m3u8') && window.processM3U8Locally) {
+          document.getElementById('current-play-title').textContent = '🛡️ M3U8 清洗与广告剥离中...';
+          const cleanDataUri = await window.processM3U8Locally(url, headers);
+          video.src = cleanDataUri;
+        } else {
+          video.src = url;
+        }
+
+        await video.play();
+        document.getElementById('current-play-title').textContent = '▶️ 正在播放: ' + title;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (e) {
+        console.warn('播放失败，尝试直链降级:', e);
+        video.src = url;
+        video.play().catch(err => console.error(err));
+      }
+    }
+
+    // 播放器快捷操作
+    function togglePip() {
+      if (document.pictureInPictureElement) {
+        document.exitPictureInPicture();
+      } else if (video.webkitSetPresentationMode) {
+        video.webkitSetPresentationMode('picture-in-picture');
+      } else if (video.requestPictureInPicture) {
+        video.requestPictureInPicture();
+      }
+    }
+
+    function toggleSpeed() {
+      currentSpeedIdx = (currentSpeedIdx + 1) % playbackSpeeds.length;
+      const speed = playbackSpeeds[currentSpeedIdx];
+      video.playbackRate = speed;
+      document.querySelectorAll('.p-btn')[1].textContent = `${speed}x`;
+    }
+
+    // ====================================================
+    // 5. 电视直播 (IPTV) 模块
+    // ====================================================
+    async function loadIptvData(m3uPath = './data/iptv.m3u') {
+      try {
+        const fetcher = window.gmFetch || window.fetch;
+        const res = await fetcher(m3uPath);
+        const text = await res.text();
+
+        const channels = [];
+        const groups = new Set();
+        const lines = text.split('\n');
+
+        let curTitle = '';
+        let curGroup = '默认';
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (line.startsWith('#EXTINF')) {
+            const titleM = line.match(/,(.+)$/);
+            const groupM = line.match(/group-title="([^"]+)"/);
+            curTitle = titleM ? titleM[1].trim() : '电视频道';
+            curGroup = groupM ? groupM[1].trim() : '其他';
+            groups.add(curGroup);
+          } else if (line && !line.startsWith('#')) {
+            channels.push({
+              title: curTitle,
+              group: curGroup,
+              url: line
+            });
+          }
+        }
+
+        allLiveChannels = channels;
+
+        // 渲染直播分组
+        const groupSelect = document.getElementById('live-group-select');
+        groupSelect.innerHTML = '<option value="">全部频道 (' + channels.length + ')</option>';
+        groups.forEach(g => {
+          const opt = document.createElement('option');
+          opt.value = g;
+          opt.textContent = g;
+          groupSelect.appendChild(opt);
+        });
+
+        renderLiveChannels(channels.slice(0, 120));
+      } catch (e) {
+        console.error('加载直播源失败:', e);
+      }
+    }
+
+    function renderLiveChannels(channels) {
+      const container = document.getElementById('live-channels');
+      container.innerHTML = '';
+
+      channels.forEach(ch => {
+        const card = document.createElement('div');
+        card.className = 'channel-card';
+        card.innerHTML = `
+          <div class="channel-name" title="${ch.title}">📺 ${ch.title}</div>
+          <div class="channel-group">${ch.group}</div>
+        `;
+        card.onclick = () => {
+          executePlayback(ch.url, '直播: ' + ch.title);
+        };
+        container.appendChild(card);
+      });
+    }
+
+    function filterLiveGroup() {
+      const g = document.getElementById('live-group-select').value;
+      const filtered = g ? allLiveChannels.filter(c => c.group === g) : allLiveChannels;
+      renderLiveChannels(filtered.slice(0, 150));
+    }
+
+    function filterLiveSearch() {
+      const q = document.getElementById('live-search').value.toLowerCase().trim();
+      const filtered = q ? allLiveChannels.filter(c => c.title.toLowerCase().includes(q)) : allLiveChannels;
+      renderLiveChannels(filtered.slice(0, 150));
+    }
+
+    function reloadCustomM3u() {
+      const val = document.getElementById('custom-m3u-input').value.trim();
+      if (val) loadIptvData(val);
+    }
+
+    // ====================================================
+    // 6. 播放历史与追剧管理
+    // ====================================================
+    function saveHistory(vod, epName, playId) {
+      let history = JSON.parse(localStorage.getItem('catvod_history') || '[]');
+      history = history.filter(h => h.vod_id !== vod.vod_id);
+      history.unshift({
+        vod_id: vod.vod_id,
+        vod_name: vod.vod_name,
+        vod_pic: vod.vod_pic,
+        epName: epName,
+        playId: playId,
+        siteKey: currentSite.key,
+        time: Date.now()
+      });
+      if (history.length > 50) history.pop();
+      localStorage.setItem('catvod_history', JSON.stringify(history));
+    }
+
+    function renderHistory() {
+      const container = document.getElementById('history-grid');
+      container.innerHTML = '';
+      const history = JSON.parse(localStorage.getItem('catvod_history') || '[]');
+
+      if (!history.length) {
+        container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--text-sub);">暂无追剧记录</div>';
+        return;
+      }
+
+      history.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'vod-card';
+        card.innerHTML = `
+          <div class="poster-wrap">
+            <img class="poster-img" src="${item.vod_pic}" alt="${item.vod_name}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 150%22><rect width=%22100%22 height=%22150%22 fill=%22%23222%22/></svg>'">
+            <div class="remark-badge">看到 ${item.epName}</div>
+          </div>
+          <div class="vod-info">
+            <div class="vod-title">${item.vod_name}</div>
+          </div>
+        `;
+        card.onclick = () => {
+          document.getElementById('site-select').value = item.siteKey;
+          onSiteChange();
+          openVodDetail(item);
+        };
+        container.appendChild(card);
+      });
+    }
+
+    function clearHistory() {
+      if (confirm('确定要清空全部播放历史吗？')) {
+        localStorage.removeItem('catvod_history');
+        renderHistory();
+      }
+    }
+
+    // ====================================================
+    // 7. 页面视图切换
+    // ====================================================
+    function switchView(view) {
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+
+      document.getElementById('view-vod').style.display = view === 'vod' ? 'block' : 'none';
+      document.getElementById('view-live').style.display = view === 'live' ? 'block' : 'none';
+      document.getElementById('view-history').style.display = view === 'history' ? 'block' : 'none';
+      document.getElementById('view-settings').style.display = view === 'settings' ? 'block' : 'none';
+
+      if (view === 'live' && !allLiveChannels.length) {
+        loadIptvData();
+      } else if (view === 'history') {
+        renderHistory();
+      }
+    }
+
+    // ====================================================
+    // 初始化自启动
+    // ====================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      initKernelCheck();
+      initSites();
+    });
+  </script>
+</body>
+</html>
