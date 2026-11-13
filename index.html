@@ -1289,20 +1289,35 @@
         window.hlsPlayer = null;
       }
 
-      // 如果油猴内核已就绪，尝试本地清洗 M3U8 (去广告/内联密钥)
-      let streamUrl = url;
-      if (url.includes('.m3u8') && window.safeCleanM3U8 && window.isKernelLoaded) {
+      // 1. 如果传入的是网盘协议或分享链接，自动即时解包为真实流媒体
+      let targetStreamUrl = url;
+      if (window.PanEngine && (url.startsWith('quark://') || url.startsWith('ali://') || window.PanEngine.isNetdiskUrl(url))) {
+        const resolved = await window.PanEngine.resolvePlayUrl('', url);
+        if (resolved.msg && !resolved.url) {
+          alert(resolved.msg);
+          openPanModal();
+          return;
+        }
+        if (resolved.url) {
+          targetStreamUrl = resolved.url;
+          if (resolved.header) headers = Object.assign({}, headers, resolved.header);
+        }
+      }
+
+      // 2. 如果油猴内核已就绪，尝试本地清洗 M3U8 (去广告/内联密钥)
+      let streamUrl = targetStreamUrl;
+      if (targetStreamUrl.includes('.m3u8') && window.safeCleanM3U8 && window.isKernelLoaded) {
         try {
           document.getElementById('current-play-title').textContent = '🛡️ 清洗 M3U8 广告中: ' + title;
-          streamUrl = await window.safeCleanM3U8(url, headers);
+          streamUrl = await window.safeCleanM3U8(targetStreamUrl, headers);
         } catch (err) {
           console.warn('M3U8 清洗跳过，使用原始直链:', err);
-          streamUrl = url;
+          streamUrl = targetStreamUrl;
         }
       }
 
       try {
-        if (url.includes('.m3u8') || streamUrl.includes('data:')) {
+        if (targetStreamUrl.includes('.m3u8') || streamUrl.includes('data:')) {
           // 场景 A：浏览器支持 MediaSource (Chrome, Edge, Firefox, Android, 以及支持 MSE 的 Safari)
           if (window.Hls && window.Hls.isSupported()) {
             document.getElementById('current-play-title').textContent = '⚡ HLS 引擎加载: ' + title;
@@ -1318,6 +1333,19 @@
                 }
               }
             });
+
+            // 移植自 Go 代理 (Kaiser / TheTVApp)：自动识别并剥离 TS 切片伪装头 (PNG/JPEG/WebP)
+            hls.on(Hls.Events.BUFFER_APPENDING, function (event, data) {
+              if (data && data.data && window.PanEngine && window.PanEngine.stripTsDisguiseHeader) {
+                const u8 = new Uint8Array(data.data);
+                const cleanU8 = window.PanEngine.stripTsDisguiseHeader(u8);
+                if (cleanU8.byteLength !== u8.byteLength) {
+                  console.log(`🛡️ [Go代理能力] 成功剥离 TS 伪装头: ${u8.byteLength - cleanU8.byteLength} 字节`);
+                  data.data = cleanU8.buffer.slice(cleanU8.byteOffset, cleanU8.byteOffset + cleanU8.byteLength);
+                }
+              }
+            });
+
             window.hlsPlayer = hls;
             hls.loadSource(streamUrl);
             hls.attachMedia(video);
@@ -1330,7 +1358,7 @@
                 console.warn('HLS 错误，尝试降级原生播放:', data);
                 hls.destroy();
                 window.hlsPlayer = null;
-                video.src = url;
+                video.src = targetStreamUrl;
                 video.play().catch(err => console.error(err));
               }
             });

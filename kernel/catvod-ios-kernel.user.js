@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         蜂蜜影视 iOS 纯前端全功能内核 (强化版)
 // @namespace    https://github.com/lublue147-netizen/web-tv
-// @version      3.1.0
-// @description  无视CORS、任意伪造UA/Referer、M3U8递归清洗去广告、AES-128密钥内联、CatVod JS爬虫沙箱、postMessage跨沙箱通信
+// @version      3.2.0
+// @description  无视CORS、伪造UA/Referer、M3U8递归清洗去广告、AES-128密钥内联、Go代理TS伪装头剥离、CatVod JS爬虫沙箱、postMessage跨沙箱通信
 // @author       lublue147-netizen
 // @match        *://*/*
 // @grant        GM_xmlhttpRequest
@@ -205,15 +205,46 @@
           error: err.message
         }, '*');
       }
+    } else if (action === 'STRIP_TS') {
+      try {
+        const bytes = new Uint8Array(options.bytes || []);
+        const clean = stripTsDisguiseHeader(bytes);
+        window.postMessage({
+          source: 'CATVOD_KERNEL_RESPONSE',
+          reqId: reqId,
+          success: true,
+          bytes: Array.from(clean)
+        }, '*');
+      } catch (err) {
+        window.postMessage({
+          source: 'CATVOD_KERNEL_RESPONSE',
+          reqId: reqId,
+          success: false,
+          error: err.message
+        }, '*');
+      }
     }
   });
 
+  // Kaiser / TheTVApp TS 伪装头剥离引擎 (移植自 Go 本地代理)
+  function stripTsDisguiseHeader(u8) {
+    if (!u8 || u8.byteLength < 400) return u8;
+    if (u8[0] === 0x47 && u8[188] === 0x47 && u8[376] === 0x47) return u8;
+    const limit = Math.min(u8.byteLength - 377, 8192);
+    for (let i = 1; i < limit; i++) {
+      if (u8[i] === 0x47 && u8[i + 188] === 0x47 && u8[i + 376] === 0x47) {
+        return u8.subarray(i);
+      }
+    }
+    return u8;
+  }
+
   // 广播就绪信标
   function sendBeacon() {
-    window.postMessage({ source: 'CATVOD_KERNEL_PONG', version: '3.1.0' }, '*');
+    window.postMessage({ source: 'CATVOD_KERNEL_PONG', version: '3.2.0' }, '*');
     try {
       if (document.documentElement) {
-        document.documentElement.setAttribute('data-catvod-kernel', '3.1.0');
+        document.documentElement.setAttribute('data-catvod-kernel', '3.2.0');
       }
     } catch (e) {}
   }
@@ -226,9 +257,10 @@
     const targetObj = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
     targetObj.gmFetch = gmFetch;
     targetObj.processM3U8Locally = processM3U8Locally;
+    targetObj.stripTsDisguiseHeader = stripTsDisguiseHeader;
     targetObj.isKernelLoaded = true;
-    targetObj.version = '3.1.0';
+    targetObj.version = '3.2.0';
   } catch (e) {}
 
-  console.log('✅ [CatVod iOS Kernel] 内核 v3.1.0 postMessage 双向桥已启动！');
+  console.log('✅ [CatVod iOS Kernel] 内核 v3.2.0 postMessage 双向桥已启动！(含 Go 代理 TS 伪装头剥离)');
 })();

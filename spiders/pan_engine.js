@@ -239,9 +239,15 @@
         const passMatch = clean.match(/[?&]pwd=([A-Za-z0-9_-]+)/);
         if (passMatch) passcode = passMatch[1];
 
-        // 1. 获取 share_token
-        const tokenRes = await fetcher(`https://drive-pc.quark.cn/1/clouddrive/share/sharepage/token?pr=ucpro&fr=pc&pwd_id=${pwdId}&passcode=${passcode}`, {
-          headers: { 'Cookie': cookie, 'Referer': 'https://pan.quark.cn/' }
+        // 1. 获取 share_token (必须为 POST 请求)
+        const tokenRes = await fetcher('https://drive-pc.quark.cn/1/clouddrive/share/sharepage/token?pr=ucpro&fr=pc', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': cookie,
+            'Referer': 'https://pan.quark.cn/'
+          },
+          body: JSON.stringify({ pwd_id: pwdId, passcode: passcode })
         });
         const tokenData = JSON.parse(tokenRes.text ? await tokenRes.text() : (tokenRes.content || '{}'));
         const stoken = tokenData.data ? tokenData.data.stoken : '';
@@ -547,7 +553,39 @@
     resolvePlayUrl: async function (flag, playUrl) {
       if (!playUrl) return { parse: 0, url: '' };
 
-      // 1. 直链无需解析
+      // 1. 若为网盘分享链接 (如夸克、阿里、百度等)，自动即时解包为真实可播放流
+      if (this.isNetdiskUrl(playUrl)) {
+        const prov = this.getProviderKey(playUrl);
+        if (prov === 'quark') {
+          const eps = await this.resolveQuarkShare(playUrl);
+          if (eps && eps.length) {
+            const qPlay = await this.resolveQuarkPlay(eps[0].url);
+            if (qPlay && qPlay.url) return qPlay;
+          }
+          if (!this.tokens.quark_cookie) {
+            return {
+              parse: 0,
+              url: '',
+              msg: '⚠️ 该4K影视需要夸克网盘授权，请点击右上角【☁️ 网盘配置】使用手机夸克 App 扫码免密登录！'
+            };
+          }
+        } else if (prov === 'ali') {
+          const eps = await this.resolveAliShare(playUrl);
+          if (eps && eps.length) {
+            const aPlay = await this.resolveAliPlay(eps[0].url);
+            if (aPlay && aPlay.url) return aPlay;
+          }
+          if (!this.tokens.token) {
+            return {
+              parse: 0,
+              url: '',
+              msg: '⚠️ 该4K影视需要阿里云盘授权，请点击右上角【☁️ 网盘配置】使用手机阿里云盘 App 扫码免密登录！'
+            };
+          }
+        }
+      }
+
+      // 2. 真实流媒体直链无需二次解析 (M3U8 / MP4 等)
       if (playUrl.startsWith('http://') || playUrl.startsWith('https://')) {
         return {
           parse: 0,
@@ -556,13 +594,13 @@
         };
       }
 
-      // 2. 夸克网盘专用协议
+      // 3. 夸克网盘专用协议
       if (playUrl.startsWith('quark://')) {
         const qRes = await this.resolveQuarkPlay(playUrl);
         if (qRes) return qRes;
       }
 
-      // 3. 阿里云盘专用协议
+      // 4. 阿里云盘专用协议
       if (playUrl.startsWith('ali://')) {
         const aRes = await this.resolveAliPlay(playUrl);
         if (aRes) return aRes;
@@ -607,6 +645,20 @@
         return `第${m[1].padStart(2, '0')}集`;
       }
       return filename.replace(/\.[a-zA-Z0-9]+$/, '').slice(0, 30);
+    },
+
+    // Kaiser / TheTVApp TS 伪装头剥离引擎 (移植自 Go 本地代理)
+    stripTsDisguiseHeader: function (u8) {
+      if (!u8 || u8.byteLength < 400) return u8;
+      // 若开头即为标准 MPEG-TS 同步字节 (0x47, 且间隔 188 也是 0x47)
+      if (u8[0] === 0x47 && u8[188] === 0x47 && u8[376] === 0x47) return u8;
+      const limit = Math.min(u8.byteLength - 377, 8192);
+      for (let i = 1; i < limit; i++) {
+        if (u8[i] === 0x47 && u8[i + 188] === 0x47 && u8[i + 376] === 0x47) {
+          return u8.subarray(i);
+        }
+      }
+      return u8;
     },
 
     // ====================================================
@@ -739,12 +791,12 @@
       }
     },
 
-    // 3. 百度网盘扫码登录
+    // 3. 百度网盘扫码登录 (完整两步鉴权：unicast 轮询取临时 v 码 -> qrbdusslogin 换取 BDUSS/STOKEN)
     startBaiduQrLogin: async function (onQrReady, onStatus, onComplete, onError) {
       this.stopQrPolling();
       try {
         const fetcher = global.safeFetch || global.gmFetch || global.req;
-        const res = await fetcher('https://passport.baidu.com/v2/api/getqrcode?lp=pc&qrloginfrom=pc');
+        const res = await fetcher('https://passport.baidu.com/v2/api/getqrcode?lp=pc&qrloginfrom=pc&tpl=netdisk&apiver=v3&tt=' + Date.now());
         const json = JSON.parse(res.text ? await res.text() : (res.content || '{}'));
         if (!json.sign || !json.imgurl) throw new Error('获取百度网盘二维码失败');
 
@@ -760,19 +812,53 @@
             return;
           }
           try {
-            const pollUrl = `https://passport.baidu.com/channel/unicast?channel_id=${json.sign}&callback=`;
+            const pollUrl = `https://passport.baidu.com/channel/unicast?channel_id=${json.sign}&tpl=netdisk&apiver=v3&callback=tangram_guid_1&_=${Date.now()}`;
             const pRes = await fetcher(pollUrl);
             const text = pRes.text ? await pRes.text() : (pRes.content || '');
-            if (text.includes('errno') && !text.includes('100000')) {
-              if (text.includes('"status":0') || text.includes('bduss')) {
-                this.stopQrPolling();
-                this.saveTokens({ baidu_cookie: `BDCLND=${json.sign}` });
-                onComplete('🎉 百度网盘登录成功！授权已生效。');
-              } else if (text.includes('"status":1')) {
-                onStatus('已扫码，请在手机端点击确认...');
+
+            // 提取手机扫码确认后下发的 32 位临时鉴权码 v
+            const vMatch = text.match(/\\"[vV]\\":\\"([a-f0-9]{32})\\"/) || text.match(/"[vV]":"([a-f0-9]{32})"/);
+            if (vMatch && vMatch[1]) {
+              const vToken = vMatch[1];
+              this.stopQrPolling();
+              onStatus('✅ 扫码成功，正在换取网盘凭证 (BDUSS)...');
+
+              // 第二阶段：使用临时 vToken 换取真正的登录态与 BDUSS
+              const loginUrl = `https://passport.baidu.com/v3/login/main/qrbdusslogin?v=${Date.now()}&bduss=${vToken}&u=https%253A%252F%252Fpan.baidu.com%252Fdisk%252Fmain&loginVersion=v5&qrcode=1&tpl=netdisk&apiver=v3&tt=${Date.now()}&callback=bd__cbs__1`;
+              const lRes = await fetcher(loginUrl);
+              const lText = lRes.text ? await lRes.text() : (lRes.content || '');
+
+              let bduss = '';
+              let stoken = '';
+
+              const bMatch = lText.match(/"bduss"\s*:\s*"([^"]+)"/);
+              const sMatch = lText.match(/"stoken"\s*:\s*"([^"]+)"/);
+              if (bMatch) bduss = bMatch[1];
+              if (sMatch) stoken = sMatch[1];
+
+              if (lRes.headers) {
+                const cookieStr = lRes.headers['set-cookie'] || lRes.headers['cookie'] || '';
+                const cbMatch = cookieStr.match(/BDUSS=([^;]+)/);
+                const csMatch = cookieStr.match(/STOKEN=([^;]+)/);
+                if (cbMatch) bduss = cbMatch[1];
+                if (csMatch) stoken = csMatch[1];
               }
+
+              const finalBduss = bduss || vToken;
+              const finalCookie = `BDUSS=${finalBduss}; STOKEN=${stoken || ''}; BDCLND=${json.sign}`;
+              this.saveTokens({
+                baidu_cookie: finalCookie,
+                baidu_token: finalBduss
+              });
+              onComplete('🎉 百度网盘登录成功！授权凭证已安全保存到本地。');
+            } else if (text.includes('"status":1') || text.includes('\"status\":1') || text.includes('scaned')) {
+              onStatus('📱 已扫码，请在手机百度网盘 App 上点击「确认登录」...');
+            } else {
+              onStatus('等待「百度网盘 App」扫码...');
             }
-          } catch (pe) {}
+          } catch (pe) {
+            console.warn('[PanEngine] 百度轮询微异常:', pe);
+          }
         }, 2000);
       } catch (e) {
         onError(e.message || '初始化百度扫码失败');
