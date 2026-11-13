@@ -366,6 +366,109 @@
       category: '精选热榜',
       instance: global.DoubanSpider,
       desc: 'TMDB 全球热门电影与电视剧'
+    },
+    {
+      key: 'Wexconfig',
+      name: '🐮网盘┃配置🐮',
+      category: '4K网盘',
+      instance: {
+        homeContent: async () => {
+          if (typeof window !== 'undefined' && typeof window.openPanModal === 'function') {
+            setTimeout(() => window.openPanModal(), 100);
+          }
+          return {
+            class: [{ type_id: 'pan_cfg', type_name: '网盘配置' }],
+            list: [{
+              vod_id: 'pan_config_action',
+              vod_name: '点击打开网盘扫码配置中心',
+              vod_pic: 'https://img.icons8.com/color/96/cloud.png',
+              vod_remarks: '夸克/阿里/百度/115'
+            }]
+          };
+        },
+        categoryContent: async function () { return this.homeContent(); },
+        searchContent: async () => ({ list: [] }),
+        detailContent: async () => {
+          if (typeof window !== 'undefined' && typeof window.openPanModal === 'function') {
+            window.openPanModal();
+          }
+          return { list: [] };
+        },
+        playerContent: async () => ({ parse: 0, url: '' })
+      },
+      desc: '一键唤起夸克、阿里、百度、115扫码免密登录中心'
+    },
+    {
+      key: 'SubVersion',
+      name: '🚀【订阅版本: v3.0.7】🚀',
+      category: '精选热榜',
+      instance: {
+        homeContent: async () => ({
+          class: [{ type_id: 'notice', type_name: '系统公告' }],
+          list: [{
+            vod_id: 'notice_v3',
+            vod_name: '蜂蜜 Web TV 纯前端版已就绪 (v3.0.7)',
+            vod_pic: 'https://img.icons8.com/color/96/tv.png',
+            vod_remarks: '无服务器 · 零云端流量'
+          }]
+        }),
+        categoryContent: async function () { return this.homeContent(); },
+        searchContent: async () => ({ list: [] }),
+        detailContent: async () => ({
+          list: [{
+            vod_id: 'notice_v3',
+            vod_name: '蜂蜜 Web TV 纯前端版已就绪 (v3.0.7)',
+            vod_pic: 'https://img.icons8.com/color/96/tv.png',
+            vod_remarks: 'iOS Safari / PWA 专用',
+            vod_content: '本系统基于油猴脚本扩展，实现 100% 浏览器本地视频流量拉取与 M3U8 智能清洗。'
+          }]
+        }),
+        playerContent: async () => ({ parse: 0, url: '' })
+      },
+      desc: '订阅与系统版本公告'
+    },
+    {
+      key: 'YouTube',
+      name: '▶️YouTube┃油管精选▶️',
+      category: '海外影视',
+      instance: createLiveAdapter('YouTube', '▶️YouTube┃油管精选▶️', 'https://www.youtube.com'),
+      desc: 'YouTube 热门精选流媒体'
+    },
+    {
+      key: 'Ymck',
+      name: '🐱影猫┃仓库🐱',
+      category: '精选热榜',
+      instance: global.DoubanSpider,
+      desc: '影猫精选优质影视库'
+    },
+    {
+      key: 'push_agent',
+      name: '🚀推送┃自定义链接🚀',
+      category: '精选热榜',
+      instance: {
+        homeContent: async () => ({
+          class: [{ type_id: 'push', type_name: '链接推送' }],
+          list: [{
+            vod_id: 'push_custom',
+            vod_name: '自定义 M3U8 / MP4 链接推送播放',
+            vod_pic: 'https://img.icons8.com/color/96/link.png',
+            vod_remarks: '支持剪贴板快速粘贴'
+          }]
+        }),
+        categoryContent: async function () { return this.homeContent(); },
+        searchContent: async () => ({ list: [] }),
+        detailContent: async () => ({
+          list: [{
+            vod_id: 'push_custom',
+            vod_name: '自定义视频流推送',
+            vod_pic: 'https://img.icons8.com/color/96/link.png',
+            vod_play_from: '剪贴板直链',
+            vod_play_url: '直接播放$https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'
+          }]
+        }),
+        playerContent: async (flag, id) => ({ parse: 0, url: id })
+      },
+      desc: '支持外部 M3U8、MP4 视频流直链推送到播放器'
     }
   ];
 
@@ -393,4 +496,4 @@
 
   global.SiteRegistry = SiteRegistry;
   if (typeof module !== 'undefined' && module.exports) module.exports = SiteRegistry;
-})(typeof unsafeWindow !== 'undefined' ? unsafeWindow : window);
+})(typeof unsafeWindow !== 'undefined' ? unsafeWindow : (typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this)));
