@@ -13,6 +13,109 @@
 
   const STORAGE_KEY = 'catvod_pan_tokens';
 
+  // ====================================================
+  // 高速聚合秒播解析引擎 (StreamResolver)
+  // 汇聚红牛、非凡、量子、索尼四大主力高速 CMS M3U8 流媒体源
+  // 当网盘链接未登录、或为非直链（百度/光鸭/ISO镜像）时，秒级无缝自动切换为原生高速流
+  // ====================================================
+  const StreamResolver = {
+    sources: [
+      { name: '红牛', url: 'https://www.hongniuzy2.com/api.php/provide/vod/from/hnm3u8/?ac=detail&wd=' },
+      { name: '非凡', url: 'https://cj.ffzyapi.com/api.php/provide/vod/from/ffm3u8/?ac=detail&wd=' },
+      { name: '量子', url: 'https://cj.lzyunapi.com/api.php/provide/vod/from/lzm3u8/?ac=detail&wd=' },
+      { name: '索尼', url: 'https://suoniapi.com/api.php/provide/vod/from/snm3u8/?ac=detail&wd=' }
+    ],
+    cache: new Map(),
+
+    cleanVodTitle: function (title) {
+      if (!title || typeof title !== 'string') return '';
+      return title.replace(/\s*\(.*?\)/g, '')
+        .replace(/\s*\[.*?\]/g, '')
+        .replace(/\s*【.*?】/g, '')
+        .replace(/(?:4K|1080P|原盘|双语|国英|超清|臻彩|高码|HDR|杜比|HEVC|REMUX|抢先版|HD|TC).*/i, '')
+        .trim();
+    },
+
+    resolveStreamByTitle: async function (title, epIndex = 1) {
+      if (!title) return null;
+      const cleanTitle = this.cleanVodTitle(title);
+      if (!cleanTitle) return null;
+
+      const cacheKey = `${cleanTitle}_${epIndex}`;
+      if (this.cache.has(cacheKey)) return this.cache.get(cacheKey);
+
+      const fetcher = global.safeFetch || global.gmFetch || global.req || global.fetch;
+
+      for (const src of this.sources) {
+        try {
+          const apiUrl = src.url + encodeURIComponent(cleanTitle);
+          const res = await fetcher(apiUrl, { signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(3500) : null });
+          const text = res.text ? await res.text() : (res.content || (typeof res.json === 'function' ? JSON.stringify(await res.json()) : ''));
+          const json = typeof text === 'string' ? JSON.parse(text || '{}') : text;
+          if (json.list && json.list.length > 0) {
+            const item = json.list.find(x => x.vod_name === cleanTitle) || json.list.find(x => x.vod_name && x.vod_name.includes(cleanTitle)) || json.list[0];
+            if (item && item.vod_play_url) {
+              const lines = item.vod_play_url.split('$$$');
+              const targetLine = lines.find(l => l.includes('.m3u8')) || lines[0];
+              const epList = targetLine.split('#');
+              const idx = Math.max(0, Math.min(epIndex - 1, epList.length - 1));
+              const selectedEp = epList[idx] || epList[0];
+              if (selectedEp) {
+                const streamUrl = selectedEp.includes('$') ? selectedEp.split('$')[1] : selectedEp;
+                if (streamUrl && (streamUrl.includes('.m3u8') || streamUrl.includes('.mp4') || streamUrl.startsWith('http'))) {
+                  const resObj = {
+                    source: src.name,
+                    vod_name: item.vod_name,
+                    url: streamUrl,
+                    epName: selectedEp.split('$')[0]
+                  };
+                  this.cache.set(cacheKey, resObj);
+                  return resObj;
+                }
+              }
+            }
+          }
+        } catch (e) {}
+      }
+      return null;
+    },
+
+    resolveVodEpisodes: async function (title) {
+      if (!title) return null;
+      const cleanTitle = this.cleanVodTitle(title);
+      if (!cleanTitle) return null;
+
+      const cacheKey = `all_${cleanTitle}`;
+      if (this.cache.has(cacheKey)) return this.cache.get(cacheKey);
+
+      const fetcher = global.safeFetch || global.gmFetch || global.req || global.fetch;
+
+      for (const src of this.sources) {
+        try {
+          const apiUrl = src.url + encodeURIComponent(cleanTitle);
+          const res = await fetcher(apiUrl, { signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(3500) : null });
+          const text = res.text ? await res.text() : (res.content || (typeof res.json === 'function' ? JSON.stringify(await res.json()) : ''));
+          const json = typeof text === 'string' ? JSON.parse(text || '{}') : text;
+          if (json.list && json.list.length > 0) {
+            const item = json.list.find(x => x.vod_name === cleanTitle) || json.list.find(x => x.vod_name && x.vod_name.includes(cleanTitle)) || json.list[0];
+            if (item && item.vod_play_url) {
+              const lines = item.vod_play_url.split('$$$');
+              const targetLine = lines.find(l => l.includes('.m3u8')) || lines[0];
+              const resObj = {
+                source: src.name,
+                vod_name: item.vod_name,
+                episodes: targetLine
+              };
+              this.cache.set(cacheKey, resObj);
+              return resObj;
+            }
+          }
+        } catch (e) {}
+      }
+      return null;
+    }
+  };
+
   const PanEngine = {
     // 默认配置
     tokens: {
@@ -605,39 +708,85 @@
     // ====================================================
     // 通用统一播放调度 (playerContent)
     // ====================================================
-    resolvePlayUrl: async function (flag, playUrl) {
+    resolvePlayUrl: async function (flag, playUrl, extra) {
       if (!playUrl) return { parse: 0, url: '' };
+
+      // 提取影片名称与集数
+      let vodName = '';
+      let epIndex = 1;
+      if (Array.isArray(extra) && extra.length >= 1) {
+        vodName = extra[0] || '';
+        if (extra[1]) epIndex = parseInt(extra[1], 10) || 1;
+      } else if (extra && typeof extra === 'object') {
+        vodName = extra.vodName || extra.name || '';
+        epIndex = parseInt(extra.epIndex || extra.index, 10) || 1;
+      } else if (typeof extra === 'string') {
+        vodName = extra;
+      }
+      if (!vodName && typeof global.currentVodDetail !== 'undefined' && global.currentVodDetail) {
+        vodName = global.currentVodDetail.vod_name || '';
+      }
 
       // 1. 若为网盘分享链接 (如夸克、阿里、百度等)，自动即时解包为真实可播放流
       if (this.isNetdiskUrl(playUrl)) {
         const prov = this.getProviderKey(playUrl);
         if (prov === 'quark') {
-          const eps = await this.resolveQuarkShare(playUrl);
-          if (eps && eps.length) {
-            const qPlay = await this.resolveQuarkPlay(eps[0].url);
-            if (qPlay && qPlay.url) return qPlay;
-          }
-          if (!this.tokens.quark_cookie) {
-            return {
-              parse: 0,
-              url: '',
-              msg: '⚠️ 该4K影视需要夸克网盘授权，请点击右上角【☁️ 网盘配置】使用手机夸克 App 扫码免密登录！'
-            };
+          if (this.tokens.quark_cookie) {
+            try {
+              const eps = await this.resolveQuarkShare(playUrl);
+              if (eps && eps.length) {
+                const targetEp = eps[Math.min(epIndex - 1, eps.length - 1)] || eps[0];
+                const qPlay = await this.resolveQuarkPlay(targetEp.url);
+                if (qPlay && qPlay.url) return qPlay;
+              }
+            } catch (qe) {
+              console.warn('[PanEngine] 夸克网盘解析微异常:', qe);
+            }
           }
         } else if (prov === 'ali') {
-          const eps = await this.resolveAliShare(playUrl);
-          if (eps && eps.length) {
-            const aPlay = await this.resolveAliPlay(eps[0].url);
-            if (aPlay && aPlay.url) return aPlay;
-          }
-          if (!this.tokens.token) {
-            return {
-              parse: 0,
-              url: '',
-              msg: '⚠️ 该4K影视需要阿里云盘授权，请点击右上角【☁️ 网盘配置】使用手机阿里云盘 App 扫码免密登录！'
-            };
+          if (this.tokens.token) {
+            try {
+              const eps = await this.resolveAliShare(playUrl);
+              if (eps && eps.length) {
+                const targetEp = eps[Math.min(epIndex - 1, eps.length - 1)] || eps[0];
+                const aPlay = await this.resolveAliPlay(targetEp.url);
+                if (aPlay && aPlay.url) return aPlay;
+              }
+            } catch (ae) {
+              console.warn('[PanEngine] 阿里云盘解析微异常:', ae);
+            }
           }
         }
+
+        // 网盘直链若未通过官方 Token 成功解包，自动无缝切换到聚合秒播 M3U8 专线！
+        if (vodName) {
+          try {
+            const stream = await StreamResolver.resolveStreamByTitle(vodName, epIndex);
+            if (stream && stream.url) {
+              return {
+                parse: 0,
+                url: stream.url,
+                header: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)' },
+                note: `⚡ 已自动启用【${stream.source}】极速专线秒播 (${stream.epName || '正片'})`
+              };
+            }
+          } catch (se) {
+            console.warn('[PanEngine] 聚合秒播回退异常:', se);
+          }
+        }
+
+        // 若秒播源无收录且用户未授权网盘，给出清晰授权指引，杜绝向播放器投递网页直链
+        let providerName = this.getProviderName(playUrl);
+        if (prov === 'quark') providerName = '夸克网盘';
+        else if (prov === 'ali') providerName = '阿里云盘';
+        else if (prov === 'baidu') providerName = '百度网盘';
+        else if (prov === '115') providerName = '115网盘';
+
+        return {
+          parse: 0,
+          url: '',
+          msg: `⚠️ 该4K影视需要${providerName}授权，请点击右上角【网盘配置】使用手机 App 扫码登录！`
+        };
       }
 
       // 2. 真实流媒体直链无需二次解析 (M3U8 / MP4 等)
@@ -652,23 +801,38 @@
       // 3. 夸克网盘专用协议
       if (playUrl.startsWith('quark://')) {
         const qRes = await this.resolveQuarkPlay(playUrl);
-        if (qRes) return qRes;
+        if (qRes && qRes.url) return qRes;
       }
 
       // 4. 阿里云盘专用协议
       if (playUrl.startsWith('ali://')) {
         const aRes = await this.resolveAliPlay(playUrl);
-        if (aRes) return aRes;
+        if (aRes && aRes.url) return aRes;
       }
 
-      // 4. AList 协议
+      // 5. AList 协议
       if (playUrl.startsWith('alist://')) {
         const p = playUrl.replace(/^alist:\/\//, '');
         const alRes = await this.resolveAlistPlay(p);
-        if (alRes) return alRes;
+        if (alRes && alRes.url) return alRes;
       }
 
-      // 5. 提示用户配置
+      // 6. 终极秒播回退
+      if (vodName) {
+        try {
+          const stream = await StreamResolver.resolveStreamByTitle(vodName, epIndex);
+          if (stream && stream.url) {
+            return {
+              parse: 0,
+              url: stream.url,
+              header: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)' },
+              note: `⚡ 已自动启用【${stream.source}】极速专线秒播`
+            };
+          }
+        } catch (se) {}
+      }
+
+      // 7. 提示用户配置
       let providerName = '该网盘';
       if (flag && flag.includes('夸克')) providerName = '夸克网盘';
       else if (flag && flag.includes('阿里')) providerName = '阿里云盘';
@@ -962,6 +1126,10 @@
   // 自启动初始化
   PanEngine.init();
 
+  PanEngine.StreamResolver = StreamResolver;
+  global.StreamResolver = StreamResolver;
   global.PanEngine = PanEngine;
-  if (typeof module !== 'undefined' && module.exports) module.exports = PanEngine;
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { PanEngine, StreamResolver };
+  }
 })(typeof unsafeWindow !== 'undefined' ? unsafeWindow : window);

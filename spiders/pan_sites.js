@@ -213,7 +213,7 @@
     }
 
     async playerContent(flag, id, vipFlags) {
-      return Pan.resolvePlayUrl(flag, id);
+      return Pan.resolvePlayUrl(flag, id, vipFlags);
     }
   }
 
@@ -346,7 +346,7 @@
     }
 
     async playerContent(flag, id, vipFlags) {
-      return Pan.resolvePlayUrl(flag, id);
+      return Pan.resolvePlayUrl(flag, id, vipFlags);
     }
 
     _parseHtmlItems(html) {
@@ -460,64 +460,64 @@
           vod_pic: 'https://pic3.yzzyimg.online/upload/vod/2026-10-17/202610171792206406.jpg',
           vod_remarks: '4K原盘·DIY国配双语',
           vod_content: '小男孩维克多的爱狗斯帕基死于一场车祸，维克多在学校科学课上受到启发，决心利用电击将爱犬复活。然而，这一实验引起了其他同学的模仿，小镇陷入一场怪物灾难...',
-          vod_play_from: '夸克4K原盘专线$$$夸克原画备用',
-          vod_play_url: '4K原盘DIY双语$https://pan.quark.cn/s/d8e28bc6a283$$$正片备用$https://pan.quark.cn/s/c6ca20520dad'
+          vod_play_from: '⚡极速秒播专线$$$夸克4K原盘专线$$$夸克原画备用',
+          vod_play_url: '正片$https://hn.bfvvs.com/play/5eVPQobE/index.m3u8$$$4K原盘DIY双语$https://pan.quark.cn/s/d8e28bc6a283$$$正片备用$https://pan.quark.cn/s/c6ca20520dad'
         },
         '24533': {
           vod_name: '重生密码',
           vod_pic: 'https://pic3.yzzyimg.online/upload/vod/2026-11-13/202611131794573793.jpg',
           vod_remarks: '更新至03集',
           vod_content: '悬疑犯罪现代都市剧，探寻重重迷雾背后的家族与生死密码。',
-          vod_play_from: '夸克4K原画专线$$$百度超清专线',
-          vod_play_url: '第01集$https://pan.quark.cn/s/b85de519afab$$$第01集$https://pan.baidu.com/s/1Ew_gR7exjyWIKUwmierayQ?pwd=3mi5'
+          vod_play_from: '⚡极速秒播专线$$$夸克4K原画专线$$$百度超清专线',
+          vod_play_url: '第01集$https://hn.bfvvs.com/play/dR68OyOd/index.m3u8#第02集$https://hn.bfvvs.com/play/mepm85gb/index.m3u8#第03集$https://hn.bfvvs.com/play/qaQkZp5b/index.m3u8$$$第01集$https://pan.quark.cn/s/b85de519afab$$$第01集$https://pan.baidu.com/s/1Ew_gR7exjyWIKUwmierayQ?pwd=3mi5'
         },
         '18885': {
           vod_name: 'LOST10',
           vod_pic: 'https://pic3.yzzyimg.online/upload/vod/2026-10-17/202610171792206406.jpg',
           vod_remarks: '更新至05集',
           vod_content: 'LOST10 惊悚冒险科幻连载精选，多方势力在神秘孤岛上的生存博弈。',
-          vod_play_from: '夸克4K原画专线$$$百度超清专线',
-          vod_play_url: '第01集$https://pan.quark.cn/s/08c44404fb7f$$$第01集$https://pan.baidu.com/s/1Jg9fjLFQNHKO33r_zyzcIg?pwd=8888'
+          vod_play_from: '⚡极速秒播专线$$$夸克4K原画专线$$$百度超清专线',
+          vod_play_url: '第1集$https://hn.bfvvs.com/play/e1wYVvVb/index.m3u8#第2集$https://hn.bfvvs.com/play/qaQkZgOb/index.m3u8#第3集$https://hn.bfvvs.com/play/yer9XYQd/index.m3u8#第4集$https://hn.bfvvs.com/play/Yer9X2vd/index.m3u8#第5集$https://hn.bfvvs.com/play/Yer9XjWd/index.m3u8$$$第01集$https://pan.quark.cn/s/08c44404fb7f$$$第01集$https://pan.baidu.com/s/1Jg9fjLFQNHKO33r_zyzcIg?pwd=8888'
         },
         '22920': {
           vod_name: '谷雨',
           vod_pic: 'https://img.alicdn.com/imgextra/i2/2355688876/O1CN01Jyqxzg2FRGdMrI4TG_!!2355688876.png',
           vod_remarks: '4K原画精选',
           vod_content: '谷雨时节，生命与命运的交织篇章。',
-          vod_play_from: '夸克4K原画专线$$$百度超清专线$$$光鸭4K专线',
-          vod_play_url: '第01集$https://pan.quark.cn/s/f35177a40e0b$$$第01集$https://pan.baidu.com/s/1gixkMU1chFKCduycRPxEww?pwd=gkdh$$$第01集$https://www.guangyapan.com/s/1965466680852607026_amtV6IXLP9l33m6z'
+          vod_play_from: '⚡极速秒播专线$$$夸克4K原画专线$$$百度超清专线$$$光鸭4K专线',
+          vod_play_url: '第01集$https://hn.bfvvs.com/play/av2YnD8a/index.m3u8#第02集$https://hn.bfvvs.com/play/bo2v3XXa/index.m3u8#第03集$https://hn.bfvvs.com/play/dNkElWve/index.m3u8#第04集$https://hn.bfvvs.com/play/bkRwYVEa/index.m3u8#第05集$https://hn.bfvvs.com/play/dNkEVmze/index.m3u8#第06集$https://hn.bfvvs.com/play/dPNM0Lza/index.m3u8#第07集$https://hn.bfvvs.com/play/bmZ2B8Od/index.m3u8#第08集$https://hn.bfvvs.com/play/e9rpnA3a/index.m3u8#第09集$https://hn.bfvvs.com/play/dBB8KvNd/index.m3u8#第10集$https://hn.bfvvs.com/play/av2YXzma/index.m3u8#第11集$https://hn.bfvvs.com/play/eERZrp0a/index.m3u8#第12集$https://hn.bfvvs.com/play/bkRw90Ea/index.m3u8#第13集$https://hn.bfvvs.com/play/dNk7D28e/index.m3u8#第14集$https://hn.bfvvs.com/play/bYEVpO0b/index.m3u8#第15集$https://hn.bfvvs.com/play/egJ7Jokd/index.m3u8#第16集$https://hn.bfvvs.com/play/bo2AYQAa/index.m3u8#第17集$https://hn.bfvvs.com/play/bo2AYD3a/index.m3u8#第18集$https://hn.bfvvs.com/play/av2mo2ra/index.m3u8#第19集$https://hn.bfvvs.com/play/bYEVWm2b/index.m3u8#第20集$https://hn.bfvvs.com/play/e73D12Qe/index.m3u8$$$第01集$https://pan.quark.cn/s/f35177a40e0b$$$第01集$https://pan.baidu.com/s/1gixkMU1chFKCduycRPxEww?pwd=gkdh$$$第01集$https://www.guangyapan.com/s/1965466680852607026_amtV6IXLP9l33m6z'
         },
         '22919': {
           vod_name: '折月亮',
           vod_pic: 'https://img.alicdn.com/imgextra/i3/2355688876/O1CN01NWSViY2FRGdRbFxXM_!!2355688876.png',
           vod_remarks: '4K原画精选',
           vod_content: '浪漫与悬疑交织的高清动人故事。',
-          vod_play_from: '夸克4K原画专线$$$百度超清专线$$$光鸭4K专线',
-          vod_play_url: '第01集$https://pan.quark.cn/s/b0779402e5fd$$$第01集$https://pan.baidu.com/s/1HTlIDsqitXnvfXDH8g4JEw?pwd=rrpm$$$第01集$https://www.guangyapan.com/s/1965467125075550235_amtV6IXLP9l33m6z'
+          vod_play_from: '⚡极速秒播专线$$$夸克4K原画专线$$$百度超清专线$$$光鸭4K专线',
+          vod_play_url: '第1集$https://hn.bfvvs.com/play/e9rpJLJa/index.m3u8#第2集$https://hn.bfvvs.com/play/dNkEl52e/index.m3u8#第3集$https://hn.bfvvs.com/play/bW6wxjEa/index.m3u8#第4集$https://hn.bfvvs.com/play/e31jzKAb/index.m3u8#第5集$https://hn.bfvvs.com/play/e73no0ye/index.m3u8#第6集$https://hn.bfvvs.com/play/e1wYgNVb/index.m3u8#第7集$https://hn.bfvvs.com/play/e73nlDye/index.m3u8#第8集$https://hn.bfvvs.com/play/bkRwz6Na/index.m3u8#第9集$https://hn.bfvvs.com/play/bkRwJX6a/index.m3u8#第10集$https://hn.bfvvs.com/play/dBB8KOYd/index.m3u8#第11集$https://hn.bfvvs.com/play/av2YKz0a/index.m3u8#第12集$https://hn.bfvvs.com/play/bmZ2ln9d/index.m3u8#第13集$https://hn.bfvvs.com/play/eERKOXma/index.m3u8#第14集$https://hn.bfvvs.com/play/dNk7DKme/index.m3u8#第15集$https://hn.bfvvs.com/play/azpqp9Yd/index.m3u8#第16集$https://hn.bfvvs.com/play/bqxAxD2a/index.m3u8#第17集$https://hn.bfvvs.com/play/dL9Ag3De/index.m3u8#第18集$https://hn.bfvvs.com/play/dBB1g3Qd/index.m3u8#第19集$https://hn.bfvvs.com/play/bW6WLREa/index.m3u8#第20集$https://hn.bfvvs.com/play/e31YQGAb/index.m3u8$$$第01集$https://pan.quark.cn/s/b0779402e5fd$$$第01集$https://pan.baidu.com/s/1HTlIDsqitXnvfXDH8g4JEw?pwd=rrpm$$$第01集$https://www.guangyapan.com/s/1965467125075550235_amtV6IXLP9l33m6z'
         },
         '22000': {
           vod_name: '鉴定',
           vod_pic: 'https://img.alicdn.com/imgextra/i4/2355688876/O1CN01jK1Z8N2FRGdRh69fv_!!2355688876.png',
           vod_remarks: '4K原画',
           vod_content: '鉴真伪，定人心，热播悬疑剧。',
-          vod_play_from: '夸克4K原画专线$$$百度超清专线',
-          vod_play_url: '第01集$https://pan.quark.cn/s/374f90102a47$$$第01集$https://pan.baidu.com/s/1YlgaG_FNS7U0xonnLCZHGg?pwd=gt25'
+          vod_play_from: '⚡极速秒播专线$$$夸克4K原画专线$$$百度超清专线',
+          vod_play_url: '第01集$https://hn.bfvvs.com/play/e9rpKpxa/index.m3u8#第02集$https://hn.bfvvs.com/play/dNkEvE6e/index.m3u8#第03集$https://hn.bfvvs.com/play/axkV3V9e/index.m3u8#第04集$https://hn.bfvvs.com/play/bmZ237Od/index.m3u8#第05集$https://hn.bfvvs.com/play/e31jAjMb/index.m3u8#第06集$https://hn.bfvvs.com/play/bW6wGwJa/index.m3u8#第07集$https://hn.bfvvs.com/play/eERZjZva/index.m3u8#第08集$https://hn.bfvvs.com/play/e5yl5ERe/index.m3u8#第09集$https://hn.bfvvs.com/play/bo2vq9Ka/index.m3u8#第10集$https://hn.bfvvs.com/play/egJxgV6d/index.m3u8$$$第01集$https://pan.quark.cn/s/374f90102a47$$$第01集$https://pan.baidu.com/s/1YlgaG_FNS7U0xonnLCZHGg?pwd=gt25'
         },
         '24799': {
           vod_name: '明日的我与昨日的你约会',
           vod_pic: 'https://pic3.yzzyimg.online/upload/vod/2026-11-13/202611131794573793.jpg',
           vod_remarks: '4K原盘双语',
           vod_content: '京都美术大学学生在电车上对女孩一见钟情，两人奇妙的时空错位爱情旅程。',
-          vod_play_from: '夸克4K原画专线$$$百度超清专线',
-          vod_play_url: '正片 4K原画$https://pan.quark.cn/s/d8e28bc6a283$$$正片 百度超清$https://pan.baidu.com/s/1Ew_gR7exjyWIKUwmierayQ?pwd=3mi5'
+          vod_play_from: '⚡极速秒播专线$$$夸克4K原画专线$$$百度超清专线',
+          vod_play_url: '正片$https://hn.bfvvs.com/play/QeZ6YVge/index.m3u8$$$正片 4K原画$https://pan.quark.cn/s/d8e28bc6a283$$$正片 百度超清$https://pan.baidu.com/s/1Ew_gR7exjyWIKUwmierayQ?pwd=3mi5'
         },
         '24798': {
           vod_name: '法兰西特派',
           vod_pic: 'https://img.alicdn.com/imgextra/i2/2355688876/O1CN012j1D7lINJuI0XzLj_!!2355688876.png',
           vod_remarks: '4K原盘',
           vod_content: '韦斯·安德森执导，给二十世纪一家美国报纸驻巴黎前哨站记者的情书。',
-          vod_play_from: '夸克4K原画专线$$$百度超清专线',
-          vod_play_url: '正片 4K原画$https://pan.quark.cn/s/c6ca20520dad$$$正片 百度超清$https://pan.baidu.com/s/1Ew_gR7exjyWIKUwmierayQ?pwd=3mi5'
+          vod_play_from: '⚡极速秒播专线$$$夸克4K原画专线$$$百度超清专线',
+          vod_play_url: '正片$https://hn.bfvvs.com/play/Yer9XBpd/index.m3u8$$$正片 4K原画$https://pan.quark.cn/s/c6ca20520dad$$$正片 百度超清$https://pan.baidu.com/s/1Ew_gR7exjyWIKUwmierayQ?pwd=3mi5'
         }
       };
 
@@ -598,6 +598,20 @@
 
         const playFroms = [];
         const playUrls = [];
+
+        // 尝试自动聚合极速秒播专线 (无需网盘登录，即点即播)
+        try {
+          const resolver = global.StreamResolver || (global.PanEngine && global.PanEngine.StreamResolver);
+          if (resolver && resolver.resolveVodEpisodes) {
+            const streamEpisodes = await resolver.resolveVodEpisodes(title.trim());
+            if (streamEpisodes && streamEpisodes.episodes) {
+              playFroms.push(`⚡极速秒播专线 (${streamEpisodes.source})`);
+              playUrls.push(streamEpisodes.episodes);
+            }
+          }
+        } catch (se) {
+          console.warn('[HuaJuanSpider] 聚合极速秒播失败:', se);
+        }
 
         routesMap.forEach((eps, lineName) => {
           playFroms.push(lineName);
@@ -715,7 +729,7 @@
     }
 
     async playerContent(flag, id, vipFlags) {
-      return Pan.resolvePlayUrl(flag, id);
+      return Pan.resolvePlayUrl(flag, id, vipFlags);
     }
   }
 

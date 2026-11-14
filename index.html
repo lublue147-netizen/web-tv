@@ -904,6 +904,7 @@
     let currentPlayIndex = 0;
     let currentLineIndex = 0;
     let currentLinesData = [];
+    let currentLineNames = [];
     let allLiveChannels = [];
     let playbackSpeeds = [1.0, 1.25, 1.5, 2.0, 0.75];
     let currentSpeedIdx = 0;
@@ -1224,6 +1225,7 @@
       const lines = playUrlsStr.split('$$$');
       const froms = (playFromsStr || '').split('$$$');
       currentLinesData = lines;
+      currentLineNames = froms;
       currentLineIndex = 0;
 
       // 如果有多条线路，渲染线路切换栏
@@ -1282,7 +1284,10 @@
       document.getElementById('current-play-title').textContent = '⏳ 解析直链: ' + fullTitle;
 
       try {
-        let playResult = await currentSite.instance.playerContent('', epPlayId, []);
+        const lineName = (currentLineNames && currentLineNames[currentLineIndex]) || '';
+        const vodName = currentVodDetail ? currentVodDetail.vod_name : '';
+        const epIdx = currentPlayIndex + 1;
+        let playResult = await currentSite.instance.playerContent(lineName, epPlayId, [vodName, String(epIdx)]);
         if (typeof playResult === 'string') playResult = JSON.parse(playResult);
 
         if (playResult.msg && !playResult.url) {
@@ -1295,6 +1300,10 @@
 
         const targetUrl = playResult.url || epPlayId;
         const headers = playResult.header || {};
+
+        if (playResult.note) {
+          document.getElementById('current-play-title').textContent = playResult.note + ': ' + fullTitle;
+        }
 
         await executePlayback(targetUrl, fullTitle, headers);
         saveHistory(currentVodDetail, epName, epPlayId);
@@ -1316,19 +1325,34 @@
       // 1. 如果传入的是网盘协议或分享链接，自动即时解包为真实流媒体
       let targetStreamUrl = url;
       if (window.PanEngine && (url.startsWith('quark://') || url.startsWith('ali://') || window.PanEngine.isNetdiskUrl(url))) {
-        const resolved = await window.PanEngine.resolvePlayUrl('', url);
+        const vodName = (typeof currentVodDetail !== 'undefined' && currentVodDetail) ? currentVodDetail.vod_name : title;
+        const epIdx = (typeof currentPlayIndex !== 'undefined') ? (currentPlayIndex + 1) : 1;
+        const lineName = (typeof currentLineNames !== 'undefined' && currentLineNames[currentLineIndex]) ? currentLineNames[currentLineIndex] : '';
+        const resolved = await window.PanEngine.resolvePlayUrl(lineName, url, [vodName, String(epIdx)]);
         if (resolved.msg && !resolved.url) {
           alert(resolved.msg);
-          openPanModal();
+          if (resolved.msg.includes('网盘配置') || resolved.msg.includes('扫码')) {
+            openPanModal();
+          }
           return;
         }
         if (resolved.url) {
           targetStreamUrl = resolved.url;
           if (resolved.header) headers = Object.assign({}, headers, resolved.header);
+          if (resolved.note) {
+            document.getElementById('current-play-title').textContent = resolved.note + ': ' + title;
+          }
         }
       }
 
-      // 2. 如果油猴内核已就绪，尝试本地清洗 M3U8 (去广告/内联密钥)
+      // 2. 防御检查：严禁将原始网盘 HTML 分享页投递给原生 video 标签 (防止格式错误黑屏)
+      if (window.PanEngine && window.PanEngine.isNetdiskUrl(targetStreamUrl)) {
+        alert('⚠️ 该网盘分享链接未解析出可播放视频流，请切换其他线路！');
+        document.getElementById('current-play-title').textContent = '⚠️ 无法直接播放网盘网页';
+        return;
+      }
+
+      // 3. 如果油猴内核已就绪，尝试本地清洗 M3U8 (去广告/内联密钥)
       let streamUrl = targetStreamUrl;
       if (targetStreamUrl.includes('.m3u8') && window.safeCleanM3U8 && window.isKernelLoaded) {
         try {
@@ -1413,11 +1437,15 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } catch (e) {
         console.warn('播放失败，尝试直链降级:', e);
-        video.src = url;
-        video.play().catch(err => {
-          console.error(err);
-          document.getElementById('current-play-title').textContent = '❌ 播放失败 (请检查网盘授权或源状态)';
-        });
+        if (!window.PanEngine || !window.PanEngine.isNetdiskUrl(url)) {
+          video.src = url;
+          video.play().catch(err => {
+            console.error(err);
+            document.getElementById('current-play-title').textContent = '❌ 播放失败 (请检查网盘授权或源状态)';
+          });
+        } else {
+          document.getElementById('current-play-title').textContent = '❌ 播放失败: 网盘未授权或未找到可用流';
+        }
       }
     }
 
