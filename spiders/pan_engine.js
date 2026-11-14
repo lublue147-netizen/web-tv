@@ -105,6 +105,20 @@
              u.startsWith('alist://');
     },
 
+    extractAllNetdiskLinks: function (text) {
+      if (!text) return [];
+      const regex = /(https?:\/\/[^\s'"<>]*(?:quark\.cn|alipan\.com|aliyundrive\.com|baidu\.com|115\.com|drive\.uc\.cn|guangyapan\.com)[^\s'"<>]*)/gi;
+      const matches = text.match(regex) || [];
+      const results = [];
+      matches.forEach(m => {
+        const clean = this.cleanUrl(m);
+        if (clean && !results.includes(clean)) {
+          results.push(clean);
+        }
+      });
+      return results;
+    },
+
     getProviderKey: function (url) {
       if (!url) return 'other';
       const u = url.toLowerCase();
@@ -251,13 +265,35 @@
         });
         const tokenData = JSON.parse(tokenRes.text ? await tokenRes.text() : (tokenRes.content || '{}'));
         const stoken = tokenData.data ? tokenData.data.stoken : '';
+        if (!stoken) return null;
+        const encodedStoken = encodeURIComponent(stoken);
 
-        // 2. 获取分享目录文件列表
-        const listRes = await fetcher(`https://drive-pc.quark.cn/1/clouddrive/share/sharepage/detail?pr=ucpro&fr=pc&pwd_id=${pwdId}&stoken=${stoken}&pdir_fid=0&_page=1&_size=100`, {
-          headers: { 'Cookie': cookie, 'Referer': 'https://pan.quark.cn/' }
-        });
-        const listData = JSON.parse(listRes.text ? await listRes.text() : (listRes.content || '{}'));
-        const files = (listData.data && listData.data.list) || [];
+        // 2. 递归遍历分享目录文件 (支持子文件夹深入检索)
+        const self = this;
+        async function fetchQuarkFiles(pdirFid, depth) {
+          if (depth > 3) return [];
+          try {
+            const listRes = await fetcher(`https://drive-pc.quark.cn/1/clouddrive/share/sharepage/detail?pr=ucpro&fr=pc&pwd_id=${pwdId}&stoken=${encodedStoken}&pdir_fid=${pdirFid}&_page=1&_size=100`, {
+              headers: { 'Cookie': cookie, 'Referer': 'https://pan.quark.cn/' }
+            });
+            const listData = JSON.parse(listRes.text ? await listRes.text() : (listRes.content || '{}'));
+            const items = (listData.data && listData.data.list) || [];
+            let results = [];
+            for (const item of items) {
+              if (item.file_type === 0) { // 文件夹，递归深入下一层
+                const subItems = await fetchQuarkFiles(item.fid, depth + 1);
+                results = results.concat(subItems);
+              } else {
+                results.push(item);
+              }
+            }
+            return results;
+          } catch (err) {
+            return [];
+          }
+        }
+
+        const files = await fetchQuarkFiles('0', 0);
 
         // 筛选视频切片
         const episodes = [];
@@ -266,7 +302,7 @@
           if (this._isVideoFile(name)) {
             episodes.push({
               name: this._formatEpisodeName(name, idx + 1),
-              url: `quark://${pwdId}/${f.fid}?stoken=${encodeURIComponent(stoken)}&name=${encodeURIComponent(name)}`
+              url: `quark://${pwdId}/${f.fid}?stoken=${encodedStoken}&name=${encodeURIComponent(name)}`
             });
           }
         });
@@ -367,23 +403,42 @@
         const shareToken = tokenJson.share_token;
         if (!shareToken) return null;
 
-        // 2. 遍历根目录文件
-        const listRes = await fetcher('https://api.alipan.com/adrive/v3/file/list', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-share-token': shareToken
-          },
-          body: JSON.stringify({
-            share_id: shareId,
-            parent_file_id: 'root',
-            limit: 100,
-            order_by: 'name',
-            order_direction: 'ASC'
-          })
-        });
-        const listJson = JSON.parse(listRes.text ? await listRes.text() : (listRes.content || '{}'));
-        const items = listJson.items || [];
+        // 2. 递归遍历目录文件 (深入子文件夹检索)
+        async function fetchAliFiles(parentFileId, depth) {
+          if (depth > 3) return [];
+          try {
+            const listRes = await fetcher('https://api.alipan.com/adrive/v3/file/list', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-share-token': shareToken
+              },
+              body: JSON.stringify({
+                share_id: shareId,
+                parent_file_id: parentFileId,
+                limit: 100,
+                order_by: 'name',
+                order_direction: 'ASC'
+              })
+            });
+            const listJson = JSON.parse(listRes.text ? await listRes.text() : (listRes.content || '{}'));
+            const items = listJson.items || [];
+            let results = [];
+            for (const item of items) {
+              if (item.type === 'folder') {
+                const subItems = await fetchAliFiles(item.file_id, depth + 1);
+                results = results.concat(subItems);
+              } else {
+                results.push(item);
+              }
+            }
+            return results;
+          } catch (err) {
+            return [];
+          }
+        }
+
+        const items = await fetchAliFiles('root', 0);
 
         const episodes = [];
         items.forEach((item, idx) => {
@@ -633,7 +688,7 @@
     _isVideoFile: function (filename) {
       if (!filename) return false;
       const lower = filename.toLowerCase();
-      const exts = ['.mp4', '.m3u8', '.mkv', '.ts', '.flv', '.mov', '.avi', '.wmv', '.m4v'];
+      const exts = ['.mp4', '.m3u8', '.mkv', '.ts', '.flv', '.mov', '.avi', '.wmv', '.m4v', '.iso', '.m2ts', '.webm', '.rmvb'];
       return exts.some(ext => lower.endsWith(ext));
     },
 

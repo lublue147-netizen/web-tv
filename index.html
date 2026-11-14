@@ -1171,7 +1171,31 @@
       try {
         const res = await currentSite.instance.detailContent([vodSummary.vod_id]);
         const data = typeof res === 'string' ? JSON.parse(res) : res;
-        const detail = (data.list && data.list[0]) ? data.list[0] : vodSummary;
+        let detail = (data.list && data.list[0]) ? data.list[0] : Object.assign({}, vodSummary);
+
+        // 如果站点未能成功解析出剧集线路，自动调用全网盘引擎 (GuGeSo) 实时聚合 4K 专线兜底
+        if ((!detail.vod_play_url || !detail.vod_play_from) && window.GuGeSoSpider && vodSummary.vod_name) {
+          try {
+            document.getElementById('detail-desc').textContent = `正在全网聚合检索【${vodSummary.vod_name}】4K网盘专线...`;
+            const sRes = await window.GuGeSoSpider.searchContent(vodSummary.vod_name);
+            const sData = typeof sRes === 'string' ? JSON.parse(sRes) : sRes;
+            if (sData.list && sData.list.length > 0) {
+              const matched = sData.list.find(item => item.vod_name && item.vod_name.includes(vodSummary.vod_name)) || sData.list[0];
+              const sDetailRes = await window.GuGeSoSpider.detailContent([matched.vod_id]);
+              const sDetailData = typeof sDetailRes === 'string' ? JSON.parse(sDetailRes) : sDetailRes;
+              if (sDetailData.list && sDetailData.list[0] && sDetailData.list[0].vod_play_url) {
+                detail.vod_play_from = sDetailData.list[0].vod_play_from;
+                detail.vod_play_url = sDetailData.list[0].vod_play_url;
+                if (!detail.vod_content || detail.vod_content === '暂无影片简介') {
+                  detail.vod_content = sDetailData.list[0].vod_content || detail.vod_content;
+                }
+              }
+            }
+          } catch (se) {
+            console.warn('全网盘兜底检索微异常:', se);
+          }
+        }
+
         currentVodDetail = detail;
 
         document.getElementById('detail-desc').textContent = detail.vod_content || '暂无影片简介';
